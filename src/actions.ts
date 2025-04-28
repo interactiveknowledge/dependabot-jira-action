@@ -3,7 +3,7 @@ import {
   getPullRequestByIssueId,
   PullRequest
 } from './github'
-import {createJiraIssue, jiraApiSearch} from './jira'
+import {closeJiraIssue, createJiraIssue, jiraApiSearch} from './jira'
 import * as core from '@actions/core'
 
 export interface SyncJiraOpen {
@@ -13,6 +13,7 @@ export interface SyncJiraOpen {
   projectKey: string
   issueType: string
   transitionDoneName?: string
+  closeIssueOnMerge?: string
 }
 
 export function extractIssueNumber(description: string): string {
@@ -68,7 +69,15 @@ export async function syncJiraWithClosedDependabotPulls(
       'Sync jira with closed dependabot pulls starting',
       new Date().toTimeString()
     )
-    const {repo, owner, label, projectKey, issueType} = params
+    const {
+      repo,
+      owner,
+      label,
+      projectKey,
+      issueType,
+      transitionDoneName,
+      closeIssueOnMerge
+    } = params
 
     // First find all issues in jira that are not done
     const jql = `labels="${label}" AND project=${projectKey} AND issuetype=${issueType} AND status != Done`
@@ -79,7 +88,9 @@ export async function syncJiraWithClosedDependabotPulls(
     if (
       existingIssuesResponse &&
       existingIssuesResponse.issues &&
-      existingIssuesResponse.issues.length > 0
+      existingIssuesResponse.issues.length > 0 &&
+      closeIssueOnMerge &&
+      closeIssueOnMerge === 'true'
     ) {
       // Loop through issue that are not done and check if they are done in github
       for (const issue of existingIssuesResponse.issues) {
@@ -95,7 +106,7 @@ export async function syncJiraWithClosedDependabotPulls(
           // If the github issue is closed then close the jira issue
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
-          // await closeJiraIssue(issue.id, transitionDoneName)
+          await closeJiraIssue(issue.id, transitionDoneName)
         }
       }
     }

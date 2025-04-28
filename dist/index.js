@@ -85,7 +85,7 @@ function syncJiraWithClosedDependabotPulls(params) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.setOutput('Sync jira with closed dependabot pulls starting', new Date().toTimeString());
-            const { repo, owner, label, projectKey, issueType } = params;
+            const { repo, owner, label, projectKey, issueType, transitionDoneName, closeIssueOnMerge } = params;
             // First find all issues in jira that are not done
             const jql = `labels="${label}" AND project=${projectKey} AND issuetype=${issueType} AND status != Done`;
             const existingIssuesResponse = yield (0, jira_1.jiraApiSearch)({
@@ -93,7 +93,9 @@ function syncJiraWithClosedDependabotPulls(params) {
             });
             if (existingIssuesResponse &&
                 existingIssuesResponse.issues &&
-                existingIssuesResponse.issues.length > 0) {
+                existingIssuesResponse.issues.length > 0 &&
+                closeIssueOnMerge &&
+                closeIssueOnMerge === 'true') {
                 // Loop through issue that are not done and check if they are done in github
                 for (const issue of existingIssuesResponse.issues) {
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -108,7 +110,7 @@ function syncJiraWithClosedDependabotPulls(params) {
                         // If the github issue is closed then close the jira issue
                         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                         // @ts-ignore
-                        // await closeJiraIssue(issue.id, transitionDoneName)
+                        yield (0, jira_1.closeJiraIssue)(issue.id, transitionDoneName);
                     }
                 }
             }
@@ -552,14 +554,18 @@ function run() {
             const issueType = core.getInput('jiraIssueType');
             const repo = core.getInput('githubRepo');
             const owner = core.getInput('githubOwner');
+            const closeIssueOnMerge = core.getInput('closeIssueOnMerge');
             // First close jira issue that are closed in github
-            // await syncJiraWithClosedDependabotPulls({
-            //   repo,
-            //   owner,
-            //   label,
-            //   projectKey,
-            //   issueType
-            // })
+            if (closeIssueOnMerge === 'true') {
+                yield (0, actions_1.syncJiraWithClosedDependabotPulls)({
+                    repo,
+                    owner,
+                    label,
+                    projectKey,
+                    issueType,
+                    closeIssueOnMerge
+                });
+            }
             // Then open new issues in jira from open dependabot issues
             yield (0, actions_1.syncJiraWithOpenDependabotPulls)({
                 repo,

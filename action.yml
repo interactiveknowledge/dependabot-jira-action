@@ -21,6 +21,10 @@ inputs:
     required: true
     description: 'Owner of the repo'
     default: "repo-name"
+  closeIssueOnMerge:
+    required: true
+    description: 'Whether to auto-resolve jira issue when PR is merged into branch'
+    default: "false"
 runs:
   using: 'node16'
   main: 'dist/index.js'
