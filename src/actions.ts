@@ -96,7 +96,7 @@ export async function syncJiraWithClosedDependabotPulls(
           // If the github issue is closed then close the jira issue
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
-          await closeJiraIssue(issue.id, transitionDoneName)
+          // await closeJiraIssue(issue.id, transitionDoneName)
         }
       }
     }
