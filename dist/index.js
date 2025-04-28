@@ -85,7 +85,7 @@ function syncJiraWithClosedDependabotPulls(params) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.setOutput('Sync jira with closed dependabot pulls starting', new Date().toTimeString());
-            const { repo, owner, label, projectKey, issueType, transitionDoneName } = params;
+            const { repo, owner, label, projectKey, issueType } = params;
             // First find all issues in jira that are not done
             const jql = `labels="${label}" AND project=${projectKey} AND issuetype=${issueType} AND status != Done`;
             const existingIssuesResponse = yield (0, jira_1.jiraApiSearch)({
@@ -108,7 +108,7 @@ function syncJiraWithClosedDependabotPulls(params) {
                         // If the github issue is closed then close the jira issue
                         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                         // @ts-ignore
-                        yield (0, jira_1.closeJiraIssue)(issue.id, transitionDoneName);
+                        // await closeJiraIssue(issue.id, transitionDoneName)
                     }
                 }
             }
@@ -162,7 +162,7 @@ function getDependabotOpenPullRequests(params) {
             if (((_a = pull === null || pull === void 0 ? void 0 : pull.user) === null || _a === void 0 ? void 0 : _a.login) === dependabotLoginName) {
                 const item = {
                     url: pull.html_url,
-                    summary: `Dependabot alert - ${repo} - ${pull.title}`,
+                    summary: `Dependabot alert \\- ${repo} \\- ${pull.title}`,
                     description: pull.body,
                     repoName: pull.base.repo.name,
                     repoUrl: pull.base.repo.html_url.replace('***', owner),
@@ -381,7 +381,13 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Bug', repoNa
                             content: [
                                 {
                                     text: `Pull request url: ${url}`,
-                                    type: 'text'
+                                    type: 'text',
+                                    marks: {
+                                        type: 'link',
+                                        attrs: {
+                                            href: url
+                                        }
+                                    }
                                 }
                             ],
                             type: 'paragraph'
@@ -547,13 +553,13 @@ function run() {
             const repo = core.getInput('githubRepo');
             const owner = core.getInput('githubOwner');
             // First close jira issue that are closed in github
-            yield (0, actions_1.syncJiraWithClosedDependabotPulls)({
-                repo,
-                owner,
-                label,
-                projectKey,
-                issueType
-            });
+            // await syncJiraWithClosedDependabotPulls({
+            //   repo,
+            //   owner,
+            //   label,
+            //   projectKey,
+            //   issueType
+            // })
             // Then open new issues in jira from open dependabot issues
             yield (0, actions_1.syncJiraWithOpenDependabotPulls)({
                 repo,

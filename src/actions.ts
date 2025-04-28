@@ -3,7 +3,7 @@ import {
   getPullRequestByIssueId,
   PullRequest
 } from './github'
-import {closeJiraIssue, createJiraIssue, jiraApiSearch} from './jira'
+import {createJiraIssue, jiraApiSearch} from './jira'
 import * as core from '@actions/core'
 
 export interface SyncJiraOpen {
@@ -68,8 +68,7 @@ export async function syncJiraWithClosedDependabotPulls(
       'Sync jira with closed dependabot pulls starting',
       new Date().toTimeString()
     )
-    const {repo, owner, label, projectKey, issueType, transitionDoneName} =
-      params
+    const {repo, owner, label, projectKey, issueType} = params
 
     // First find all issues in jira that are not done
     const jql = `labels="${label}" AND project=${projectKey} AND issuetype=${issueType} AND status != Done`

@@ -1,8 +1,5 @@
 import * as core from '@actions/core'
-import {
-  syncJiraWithClosedDependabotPulls,
-  syncJiraWithOpenDependabotPulls
-} from './actions'
+import {syncJiraWithOpenDependabotPulls} from './actions'
 
 async function run(): Promise<void> {
   try {
