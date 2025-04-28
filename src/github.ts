@@ -49,7 +49,7 @@ export async function getDependabotOpenPullRequests(
     if (pull?.user?.login === dependabotLoginName) {
       const item: PullRequest = {
         url: pull.html_url,
-        summary: `Dependabot alert - ${repo} - ${pull.title}`,
+        summary: `Dependabot alert \\- ${repo} \\- ${pull.title}`,
         description: pull.body,
         repoName: pull.base.repo.name,
         repoUrl: pull.base.repo.html_url.replace('***', owner),
