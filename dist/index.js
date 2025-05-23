@@ -164,7 +164,7 @@ function getDependabotOpenPullRequests(params) {
             if (((_a = pull === null || pull === void 0 ? void 0 : pull.user) === null || _a === void 0 ? void 0 : _a.login) === dependabotLoginName) {
                 const item = {
                     url: pull.html_url,
-                    summary: `Dependabot alert: ${pull.title}`,
+                    summary: `Dependabot alert for ${repo}: ${pull.title}`,
                     description: pull.body,
                     repoName: pull.base.repo.name,
                     repoUrl: pull.base.repo.html_url.replace('***', owner),
