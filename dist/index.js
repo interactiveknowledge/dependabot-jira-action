@@ -378,37 +378,42 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Bug', repoNa
                 description: {
                     content: [
                         {
+                            type: 'paragraph',
                             content: [
                                 {
                                     text: `Application repo: ${repoName}`,
                                     type: 'text'
                                 }
-                            ],
-                            type: 'paragraph'
+                            ]
                         },
                         {
+                            type: 'paragraph',
                             content: [
                                 {
                                     text: `Application url: ${repoUrl}`,
                                     type: 'text'
                                 }
-                            ],
-                            type: 'paragraph'
+                            ]
                         },
                         {
+                            type: 'paragraph',
                             content: [
                                 {
                                     text: `Pull request last updated at: ${lastUpdatedAt}`,
                                     type: 'text'
                                 }
-                            ],
-                            type: 'paragraph'
+                            ]
                         },
                         {
+                            type: 'paragraph',
                             content: [
                                 {
-                                    text: `Pull request url: ${url}`,
                                     type: 'text',
+                                    text: `Pull request url:`
+                                },
+                                {
+                                    type: 'text',
+                                    text: `${url}`,
                                     marks: [
                                         {
                                             type: 'link',
@@ -418,17 +423,16 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Bug', repoNa
                                         }
                                     ]
                                 }
-                            ],
-                            type: 'paragraph'
+                            ]
                         },
                         {
+                            type: 'paragraph',
                             content: [
                                 {
-                                    text: (0, actions_1.createIssueNumberString)(pullNumber),
-                                    type: 'text'
+                                    type: 'text',
+                                    text: (0, actions_1.createIssueNumberString)(pullNumber)
                                 }
-                            ],
-                            type: 'paragraph'
+                            ]
                         }
                     ],
                     type: 'doc',

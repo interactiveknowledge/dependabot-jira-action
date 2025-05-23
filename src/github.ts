@@ -48,7 +48,6 @@ export async function getDependabotOpenPullRequests(
   const items = []
   for (const pull of data) {
     if (pull?.user?.login === dependabotLoginName) {
-      core.debug(pull)
       const item: PullRequest = {
         url: pull.html_url,
         summary: `Dependabot alert for ${repo}: ${pull.title}`,
