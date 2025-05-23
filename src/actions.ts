@@ -43,13 +43,17 @@ export async function syncJiraWithOpenDependabotPulls(
       repo,
       owner
     })
+    const issues: object[] = []
+
     for (const pull of dependabotPulls) {
-      await createJiraIssue({
+      const issueData: object = await createJiraIssue({
         label,
         projectKey,
         issueType,
         ...pull
       })
+
+      issues.push(issueData)
     }
     core.setOutput(
       'Sync jira with open dependabot pulls success',
