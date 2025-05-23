@@ -140,37 +140,42 @@ export async function createJiraIssue({
       description: {
         content: [
           {
+            type: 'paragraph',
             content: [
               {
                 text: `Application repo: ${repoName}`,
                 type: 'text'
               }
-            ],
-            type: 'paragraph'
+            ]
           },
           {
+            type: 'paragraph',
             content: [
               {
                 text: `Application url: ${repoUrl}`,
                 type: 'text'
               }
-            ],
-            type: 'paragraph'
+            ]
           },
           {
+            type: 'paragraph',
             content: [
               {
                 text: `Pull request last updated at: ${lastUpdatedAt}`,
                 type: 'text'
               }
-            ],
-            type: 'paragraph'
+            ]
           },
           {
+            type: 'paragraph',
             content: [
               {
-                text: `Pull request url: ${url}`,
                 type: 'text',
+                text: `Pull request url:`
+              },
+              {
+                type: 'text',
+                text: `${url}`,
                 marks: [
                   {
                     type: 'link',
@@ -180,17 +185,16 @@ export async function createJiraIssue({
                   }
                 ]
               }
-            ],
-            type: 'paragraph'
+            ]
           },
           {
+            type: 'paragraph',
             content: [
               {
-                text: createIssueNumberString(pullNumber),
-                type: 'text'
+                type: 'text',
+                text: createIssueNumberString(pullNumber)
               }
-            ],
-            type: 'paragraph'
+            ]
           }
         ],
         type: 'doc',
