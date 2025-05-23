@@ -171,12 +171,14 @@ export async function createJiraIssue({
               {
                 text: `Pull request url: ${url}`,
                 type: 'text',
-                marks: {
-                  type: 'link',
-                  attrs: {
-                    href: url
+                marks: [
+                  {
+                    type: 'link',
+                    attrs: {
+                      href: url
+                    }
                   }
-                }
+                ]
               }
             ],
             type: 'paragraph'

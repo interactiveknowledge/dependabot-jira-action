@@ -67,12 +67,10 @@ function syncJiraWithOpenDependabotPulls(params) {
                 repo,
                 owner
             });
-            const issues = [];
             for (const pull of dependabotPulls) {
-                const issueData = yield (0, jira_1.createJiraIssue)(Object.assign({ label,
+                yield (0, jira_1.createJiraIssue)(Object.assign({ label,
                     projectKey,
                     issueType }, pull));
-                issues.push(issueData);
             }
             core.setOutput('Sync jira with open dependabot pulls success', new Date().toTimeString());
             return 'success';
@@ -386,12 +384,14 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Bug', repoNa
                                 {
                                     text: `Pull request url: ${url}`,
                                     type: 'text',
-                                    marks: {
-                                        type: 'link',
-                                        attrs: {
-                                            href: url
+                                    marks: [
+                                        {
+                                            type: 'link',
+                                            attrs: {
+                                                href: url
+                                            }
                                         }
-                                    }
+                                    ]
                                 }
                             ],
                             type: 'paragraph'
