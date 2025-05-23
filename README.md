@@ -12,6 +12,11 @@ name: Update JIRA with dependabot issues
 on:
   schedule:
     - cron: '0 0 * * *'
+  pull_request_target:
+    branches:
+      - master
+    types:
+      - opened
 jobs:
   jira:
     runs-on: ubuntu-latest
