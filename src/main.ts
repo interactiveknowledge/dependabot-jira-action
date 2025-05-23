@@ -16,6 +16,7 @@ async function run(): Promise<void> {
     const repo: string = core.getInput('githubRepo')
     const owner: string = core.getInput('githubOwner')
     const closeIssueOnMerge: string = core.getInput('closeIssueOnMerge')
+
     // First close jira issue that are closed in github
     if (closeIssueOnMerge === 'true') {
       await syncJiraWithClosedDependabotPulls({

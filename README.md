@@ -11,7 +11,7 @@ See [action.yml](action.yml)
 name: Update JIRA with dependabot issues
 on:
   schedule:
-    - cron: '0 */8 * * *'
+    - cron: '0 0 * * *'
 jobs:
   jira:
     runs-on: ubuntu-latest
@@ -19,14 +19,18 @@ jobs:
       pull-requests: read
     steps:
       - name: Dependabot JIRA Action
-        uses: sprout-tech/dependabot-jira-action@v1.2.1
+        uses: interactiveknowledge/dependabot-jira-action@main
         with:
-          jiraIssueLabel: dependabot
-          jiraProjectKey: TGA
-          jiraIssueType: Bug
-          githubRepo: dependabot-jira-action
-          githubOwner: sprout-tech
-          closeIssueOnMerge: false
+          jiraIssueLabel: security-update
+          jiraProjectKey: ARW
+          jiraIssueType: Story
+          githubRepo: project_abt_revwar
+          githubOwner: interactiveknowledge
+          closeIssueOnMerge: "false"
+          ikProjectDomain: "american-revolution-experience.battlefields.org"
+          jiraProjectPage: "https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/2619802145"
+          ikDevSite: "https://battlefields-revwar-dev.herokuapp.com/"
+          ikTeamworkProject: "https://interactiveknowledge.teamwork.com/#/projects/650734"
         env:
           JIRA_SUBDOMAIN: ${{ secrets.JIRA_SUBDOMAIN }}
           JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
