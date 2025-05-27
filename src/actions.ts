@@ -212,15 +212,14 @@ export async function syncJiraWithOpenDependabotAlerts(
       projectStatus = 'security'
 
       jiraTickets.push({
-        jiraTicketData,
-        label,
-        projectKey,
-        issueType,
-        ...alert
+        ...alert,
+        ...jiraTicketData.data
       })
     }
 
+    core.debug(projectStatus)
     core.debug(JSON.stringify(jiraTickets))
+    // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
 
     // Update confluence.
     // Projects & Hosting Documents
@@ -228,12 +227,16 @@ export async function syncJiraWithOpenDependabotAlerts(
       process.env.CONFLUENCE_PROJECTS_DOC_ID &&
       process.env.CONFLUENCE_PROJECTS_DOC_ID !== ''
     ) {
-      const projectDocId = process.env.CONFLUENCE_PROJECTS_DOC_ID
+      const projectDocId = '108986395'
       const confluenceData = await getConfluenceDocument({pageId: projectDocId})
-      // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
 
-      core.debug(projectStatus)
-      core.debug(JSON.stringify(confluenceData))
+      if (confluenceData) {
+        const currentHtml = confluenceData.body.editor.value
+        const newVersion = confluenceData.version.number + 1
+
+        core.debug(JSON.stringify(newVersion))
+        core.debug(JSON.stringify(currentHtml))
+      }
     }
 
     let projectPageId = core.getInput('jiraProjectPage')
@@ -244,13 +247,12 @@ export async function syncJiraWithOpenDependabotAlerts(
       )
       projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
 
-      const confluenceData = await getConfluenceDocument({
-        pageId: projectPageId
-      })
-      // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
+      // const confluenceData = await getConfluenceDocument({
+      //   pageId: projectPageId
+      // })
 
-      core.debug(projectPageId)
-      core.debug(JSON.stringify(confluenceData))
+      // core.debug(projectPageId)
+      // core.debug(JSON.stringify(confluenceData))
     }
 
     core.setOutput(

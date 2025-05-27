@@ -15,7 +15,14 @@ interface ApiRequestResponse {
   data: object
 }
 interface ApiDocumentResponse {
-  data: object
+  body: {
+    editor: {
+      value: string
+    }
+  }
+  version: {
+    number: number
+  }
 }
 interface ApiRequestSearchResponse {
   issues: object[]
@@ -320,7 +327,6 @@ export async function createJiraIssue({
 export async function createJiraIssueFromAlerts({
   label,
   projectKey,
-  summary,
   issueType = 'Story',
   repoName,
   repoUrl,
@@ -438,7 +444,7 @@ export async function createJiraIssueFromAlerts({
       project: {
         key: projectKey
       },
-      summary,
+      issueSummary,
       description: {
         content: bodyContent,
         type: 'doc',

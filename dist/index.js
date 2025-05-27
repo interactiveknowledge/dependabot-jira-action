@@ -174,32 +174,33 @@ function syncJiraWithOpenDependabotAlerts(params) {
                     issueSummary,
                     issueType, repoName: repo, repoUrl: `https://github.com/${owner}/${repo}` }));
                 projectStatus = 'security';
-                jiraTickets.push(Object.assign({ jiraTicketData,
-                    label,
-                    projectKey,
-                    issueType }, alert));
+                jiraTickets.push(Object.assign(Object.assign({}, alert), jiraTicketData.data));
             }
+            core.debug(projectStatus);
             core.debug(JSON.stringify(jiraTickets));
+            // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
             // Update confluence.
             // Projects & Hosting Documents
             if (process.env.CONFLUENCE_PROJECTS_DOC_ID &&
                 process.env.CONFLUENCE_PROJECTS_DOC_ID !== '') {
-                const projectDocId = process.env.CONFLUENCE_PROJECTS_DOC_ID;
+                const projectDocId = '108986395';
                 const confluenceData = yield (0, jira_1.getConfluenceDocument)({ pageId: projectDocId });
-                // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
-                core.debug(projectStatus);
-                core.debug(JSON.stringify(confluenceData));
+                if (confluenceData) {
+                    const currentHtml = confluenceData.body.editor.value;
+                    const newVersion = confluenceData.version.number + 1;
+                    core.debug(JSON.stringify(newVersion));
+                    core.debug(JSON.stringify(currentHtml));
+                }
             }
             let projectPageId = core.getInput('jiraProjectPage');
             if (projectPageId && projectPageId !== '') {
                 projectPageId = projectPageId.replace('https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/', '');
                 projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'));
-                const confluenceData = yield (0, jira_1.getConfluenceDocument)({
-                    pageId: projectPageId
-                });
-                // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
-                core.debug(projectPageId);
-                core.debug(JSON.stringify(confluenceData));
+                // const confluenceData = await getConfluenceDocument({
+                //   pageId: projectPageId
+                // })
+                // core.debug(projectPageId)
+                // core.debug(JSON.stringify(confluenceData))
             }
             core.setOutput('Sync jira with open dependabot pulls success', new Date().toTimeString());
             return 'success';
@@ -648,7 +649,7 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repo
     });
 }
 exports.createJiraIssue = createJiraIssue;
-function createJiraIssueFromAlerts({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, severity, vulnerable_version_range, description, issueSummary }) {
+function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, severity, vulnerable_version_range, description, issueSummary }) {
     return __awaiter(this, void 0, void 0, function* () {
         const issueNumberString = (0, actions_1.createIssueAlertNumberString)(number);
         const jql = `summary~"${issueSummary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
@@ -753,7 +754,7 @@ function createJiraIssueFromAlerts({ label, projectKey, summary, issueType = 'St
                 project: {
                     key: projectKey
                 },
-                summary,
+                issueSummary,
                 description: {
                     content: bodyContent,
                     type: 'doc',
