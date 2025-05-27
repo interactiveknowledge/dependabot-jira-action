@@ -17,6 +17,9 @@ on:
       - master
     types:
       - opened
+      - reopened
+      - edited
+      - closed
 jobs:
   jira:
     runs-on: ubuntu-latest
