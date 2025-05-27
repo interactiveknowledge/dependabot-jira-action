@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {
   syncJiraWithClosedDependabotPulls,
-  syncJiraWithOpenDependabotPulls
+  syncJiraWithOpenDependabotAlerts
 } from './actions'
 
 async function run(): Promise<void> {
@@ -30,7 +30,7 @@ async function run(): Promise<void> {
     }
 
     // Then open new issues in jira from open dependabot issues
-    await syncJiraWithOpenDependabotPulls({
+    await syncJiraWithOpenDependabotAlerts({
       repo,
       owner,
       label,

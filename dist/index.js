@@ -39,7 +39,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.syncJiraWithClosedDependabotPulls = exports.syncJiraWithOpenDependabotPulls = exports.createIssueNumberString = exports.extractIssueNumber = void 0;
+exports.syncJiraWithOpenDependabotAlerts = exports.syncJiraWithClosedDependabotPulls = exports.syncJiraWithOpenDependabotPulls = exports.createIssueAlertNumberString = exports.createIssuePullNumberString = exports.extractIssueNumber = void 0;
 const github_1 = __nccwpck_require__(5928);
 const jira_1 = __nccwpck_require__(4438);
 const core = __importStar(__nccwpck_require__(2186));
@@ -54,10 +54,14 @@ function extractIssueNumber(description) {
     }
 }
 exports.extractIssueNumber = extractIssueNumber;
-function createIssueNumberString(pullNumber) {
+function createIssuePullNumberString(pullNumber) {
     return `PULL_NUMBER_${pullNumber}_PULL_NUMBER`;
 }
-exports.createIssueNumberString = createIssueNumberString;
+exports.createIssuePullNumberString = createIssuePullNumberString;
+function createIssueAlertNumberString(pullNumber) {
+    return `ALERT_NUMBER_${pullNumber}_ALERT_NUMBER`;
+}
+exports.createIssueAlertNumberString = createIssueAlertNumberString;
 function syncJiraWithOpenDependabotPulls(params) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -152,6 +156,60 @@ function syncJiraWithClosedDependabotPulls(params) {
     });
 }
 exports.syncJiraWithClosedDependabotPulls = syncJiraWithClosedDependabotPulls;
+function syncJiraWithOpenDependabotAlerts(params) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            core.setOutput('Sync jira with open dependabot pulls starting', new Date().toTimeString());
+            const { repo, owner, label, projectKey, issueType } = params;
+            const dependabotAlerts = yield (0, github_1.getDependabotOpenAlerts)({
+                repo,
+                owner
+            });
+            const jiraTickets = [];
+            let projectStatus = 'none';
+            for (const alert of dependabotAlerts) {
+                const summary = ``;
+                const jiraTicketData = yield (0, jira_1.createJiraIssueFromAlerts)(Object.assign(Object.assign({}, alert), { label,
+                    projectKey,
+                    summary,
+                    issueType, repoName: repo, repoUrl: `https://github.com/${owner}/${repo}` }));
+                projectStatus = 'security';
+                jiraTickets.push(Object.assign({ jiraTicketData,
+                    label,
+                    projectKey,
+                    issueType }, alert));
+            }
+            core.debug(JSON.stringify(jiraTickets));
+            // Update confluence.
+            // Projects & Hosting Documents
+            if (process.env.CONFLUENCE_PROJECTS_DOC_ID &&
+                process.env.CONFLUENCE_PROJECTS_DOC_ID !== '') {
+                const projectDocId = process.env.CONFLUENCE_PROJECTS_DOC_ID;
+                const confluenceData = yield (0, jira_1.getConfluenceDocument)({ pageId: projectDocId });
+                // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
+                core.debug(projectStatus);
+                core.debug(JSON.stringify(confluenceData));
+            }
+            let projectPageId = core.getInput('jiraProjectPage');
+            if (projectPageId && projectPageId !== '') {
+                projectPageId = projectPageId.replace('https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/', '');
+                projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'));
+                const confluenceData = yield (0, jira_1.getConfluenceDocument)({
+                    pageId: projectPageId
+                });
+                // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
+                core.debug(projectPageId);
+                core.debug(JSON.stringify(confluenceData));
+            }
+            core.setOutput('Sync jira with open dependabot pulls success', new Date().toTimeString());
+            return 'success';
+        }
+        catch (e) {
+            throw e;
+        }
+    });
+}
+exports.syncJiraWithOpenDependabotAlerts = syncJiraWithOpenDependabotAlerts;
 
 
 /***/ }),
@@ -171,8 +229,39 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getPullRequestByIssueId = exports.getDependabotOpenPullRequests = void 0;
+exports.getPullRequestByIssueId = exports.getDependabotOpenPullRequests = exports.getDependabotOpenAlerts = void 0;
 const github_1 = __nccwpck_require__(5438);
+function getDependabotOpenAlerts(params) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const { owner, repo } = params;
+        const githubApiKey = process.env.GITHUB_API_TOKEN || '';
+        const octokit = (0, github_1.getOctokit)(githubApiKey);
+        const alerts = [];
+        const alertData = yield octokit.request('GET /repos/{owner}/{repo}/dependabot/alerts?state=open', {
+            owner,
+            repo,
+            headers: {
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+        });
+        if (alertData.data) {
+            for (const alert of alertData.data) {
+                const alertItem = {
+                    number: alert.number,
+                    url: alert.html_url,
+                    severity: alert.security_vulnerability.severity,
+                    vulnerable_version_range: alert.security_vulnerability.vulnerable_version_range,
+                    lastUpdatedAt: alert.updated_at,
+                    description: alert.security_advisory.description,
+                    summary: alert.security_advisory.summary
+                };
+                alerts.push(alertItem);
+            }
+        }
+        return alerts;
+    });
+}
+exports.getDependabotOpenAlerts = getDependabotOpenAlerts;
 function getDependabotOpenPullRequests(params) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
@@ -210,7 +299,8 @@ function getDependabotOpenPullRequests(params) {
                             severity: alert.security_vulnerability.severity,
                             vulnerable_version_range: alert.security_vulnerability.vulnerable_version_range,
                             lastUpdatedAt: alert.updated_at,
-                            description: alert.security_advisory.description
+                            description: alert.security_advisory.description,
+                            summary: alert.security_advisory.summary
                         };
                         alerts.push(alertItem);
                     }
@@ -306,7 +396,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getConfluenceDocument = exports.closeJiraIssue = exports.createJiraIssue = exports.jiraApiSearch = exports.getMarkupForStatusTags = exports.getConfluenceDocumentApiUrl = exports.getJiraSearchApiUrl = exports.getJiraApiUrlV3 = void 0;
+exports.getConfluenceDocument = exports.closeJiraIssue = exports.createJiraIssueFromAlerts = exports.createJiraIssue = exports.jiraApiSearch = exports.getMarkupForStatusTags = exports.getConfluenceDocumentApiUrl = exports.getJiraSearchApiUrl = exports.getJiraApiUrlV3 = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const node_fetch_1 = __importDefault(__nccwpck_require__(467));
 const actions_1 = __nccwpck_require__(3623);
@@ -404,7 +494,7 @@ function jiraApiSearch({ jql }) {
 exports.jiraApiSearch = jiraApiSearch;
 function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, pullNumber, alerts }) {
     return __awaiter(this, void 0, void 0, function* () {
-        const issueNumberString = (0, actions_1.createIssueNumberString)(pullNumber);
+        const issueNumberString = (0, actions_1.createIssuePullNumberString)(pullNumber);
         const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
         const existingIssuesResponse = yield jiraApiSearch({
             jql
@@ -558,6 +648,132 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repo
     });
 }
 exports.createJiraIssue = createJiraIssue;
+function createJiraIssueFromAlerts({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, severity, vulnerable_version_range, description }) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const issueNumberString = (0, actions_1.createIssueAlertNumberString)(number);
+        const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
+        const existingIssuesResponse = yield jiraApiSearch({
+            jql
+        });
+        if (existingIssuesResponse &&
+            existingIssuesResponse.issues &&
+            existingIssuesResponse.issues.length > 0) {
+            core.debug(`Has existing issue skipping`);
+            return { data: existingIssuesResponse.issues[0] };
+        }
+        core.debug(`Did not find exising, trying create`);
+        const bodyContent = [
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: description
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        text: `Application repo: ${repoName}`,
+                        type: 'text',
+                        marks: [
+                            {
+                                type: 'link',
+                                attrs: {
+                                    href: repoUrl
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        text: `Last updated at: ${lastUpdatedAt}`,
+                        type: 'text'
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: `Alert url: `
+                    },
+                    {
+                        type: 'text',
+                        text: `${url}`,
+                        marks: [
+                            {
+                                type: 'link',
+                                attrs: {
+                                    href: url
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: `------ ${severity.toUpperCase()} Vulnerability ------`
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: `Version Range: ${vulnerable_version_range}`
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: issueNumberString
+                    }
+                ]
+            }
+        ];
+        const body = {
+            fields: {
+                labels: [label],
+                project: {
+                    key: projectKey
+                },
+                summary,
+                description: {
+                    content: bodyContent,
+                    type: 'doc',
+                    version: 1
+                },
+                issuetype: {
+                    name: issueType
+                }
+            },
+            update: {}
+        };
+        const data = yield jiraApiPost({
+            url: getJiraApiUrlV3('/issue'),
+            data: body
+        });
+        core.debug(`Create issue success`);
+        return { data };
+    });
+}
+exports.createJiraIssueFromAlerts = createJiraIssueFromAlerts;
 function closeJiraIssue(issueId, transitionName = 'done') {
     return __awaiter(this, void 0, void 0, function* () {
         core.debug(`Closing jira issue`);
@@ -729,7 +945,7 @@ function run() {
                 });
             }
             // Then open new issues in jira from open dependabot issues
-            yield (0, actions_1.syncJiraWithOpenDependabotPulls)({
+            yield (0, actions_1.syncJiraWithOpenDependabotAlerts)({
                 repo,
                 owner,
                 label,

@@ -1,6 +1,9 @@
 import * as core from '@actions/core'
 import fetch, {HeaderInit, RequestInit, Response} from 'node-fetch'
-import {createIssueNumberString} from './actions'
+import {
+  createIssueAlertNumberString,
+  createIssuePullNumberString
+} from './actions'
 import {DependabotAlert} from './github'
 
 interface ApiPostParams {
@@ -37,6 +40,21 @@ export interface CreateIssue {
   lastUpdatedAt: string
   pullNumber: string
   alerts?: DependabotAlert[]
+}
+
+export interface CreateIssueFromAlert {
+  label: string
+  projectKey: string
+  summary: string
+  description: string
+  issueType: string
+  url: string
+  repoName: string
+  repoUrl: string
+  lastUpdatedAt: string
+  severity: string
+  vulnerable_version_range: string
+  number: string
 }
 
 function getJiraAuthorizedHeader(): HeaderInit {
@@ -138,7 +156,7 @@ export async function createJiraIssue({
   pullNumber,
   alerts
 }: CreateIssue): Promise<ApiRequestResponse> {
-  const issueNumberString = createIssueNumberString(pullNumber)
+  const issueNumberString = createIssuePullNumberString(pullNumber)
   const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
   const existingIssuesResponse = await jiraApiSearch({
     jql
@@ -270,6 +288,147 @@ export async function createJiraIssue({
       })
     }
   }
+
+  const body = {
+    fields: {
+      labels: [label],
+      project: {
+        key: projectKey
+      },
+      summary,
+      description: {
+        content: bodyContent,
+        type: 'doc',
+        version: 1
+      },
+      issuetype: {
+        name: issueType
+      }
+    },
+    update: {}
+  }
+
+  const data = await jiraApiPost({
+    url: getJiraApiUrlV3('/issue'),
+    data: body
+  })
+  core.debug(`Create issue success`)
+  return {data}
+}
+
+export async function createJiraIssueFromAlerts({
+  label,
+  projectKey,
+  summary,
+  issueType = 'Story',
+  repoName,
+  repoUrl,
+  url,
+  lastUpdatedAt,
+  number,
+  severity,
+  vulnerable_version_range,
+  description
+}: CreateIssueFromAlert): Promise<ApiRequestResponse> {
+  const issueNumberString = createIssueAlertNumberString(number)
+  const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
+  const existingIssuesResponse = await jiraApiSearch({
+    jql
+  })
+  if (
+    existingIssuesResponse &&
+    existingIssuesResponse.issues &&
+    existingIssuesResponse.issues.length > 0
+  ) {
+    core.debug(`Has existing issue skipping`)
+    return {data: existingIssuesResponse.issues[0]}
+  }
+  core.debug(`Did not find exising, trying create`)
+  const bodyContent = [
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: description
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          text: `Application repo: ${repoName}`,
+          type: 'text',
+          marks: [
+            {
+              type: 'link',
+              attrs: {
+                href: repoUrl
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          text: `Last updated at: ${lastUpdatedAt}`,
+          type: 'text'
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `Alert url: `
+        },
+        {
+          type: 'text',
+          text: `${url}`,
+          marks: [
+            {
+              type: 'link',
+              attrs: {
+                href: url
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `------ ${severity.toUpperCase()} Vulnerability ------`
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `Version Range: ${vulnerable_version_range}`
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: issueNumberString
+        }
+      ]
+    }
+  ]
 
   const body = {
     fields: {

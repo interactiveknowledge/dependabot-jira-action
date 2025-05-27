@@ -18,7 +18,9 @@ export interface DependabotAlert {
   lastUpdatedAt: string
   number: string
   description: string
+  summary: string
 }
+
 export interface PullRequest {
   url: string
   summary: string
@@ -34,6 +36,45 @@ interface GetPullRequestByIdResponse {
   id: number
   url: string
   state: string
+}
+
+export async function getDependabotOpenAlerts(
+  params: GetPullRequestParams
+): Promise<DependabotAlert[]> {
+  const {owner, repo} = params
+  const githubApiKey = process.env.GITHUB_API_TOKEN || ''
+  const octokit = getOctokit(githubApiKey)
+  const alerts = []
+
+  const alertData = await octokit.request(
+    'GET /repos/{owner}/{repo}/dependabot/alerts?state=open',
+    {
+      owner,
+      repo,
+      headers: {
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
+    }
+  )
+
+  if (alertData.data) {
+    for (const alert of alertData.data) {
+      const alertItem: DependabotAlert = {
+        number: alert.number,
+        url: alert.html_url,
+        severity: alert.security_vulnerability.severity,
+        vulnerable_version_range:
+          alert.security_vulnerability.vulnerable_version_range,
+        lastUpdatedAt: alert.updated_at,
+        description: alert.security_advisory.description,
+        summary: alert.security_advisory.summary
+      }
+
+      alerts.push(alertItem)
+    }
+  }
+
+  return alerts
 }
 
 export async function getDependabotOpenPullRequests(
@@ -82,7 +123,8 @@ export async function getDependabotOpenPullRequests(
             vulnerable_version_range:
               alert.security_vulnerability.vulnerable_version_range,
             lastUpdatedAt: alert.updated_at,
-            description: alert.security_advisory.description
+            description: alert.security_advisory.description,
+            summary: alert.security_advisory.summary
           }
 
           alerts.push(alertItem)

@@ -1,7 +1,7 @@
 import * as process from 'process'
 import {expect, test} from '@jest/globals'
 import {getJiraApiUrlV3, getJiraSearchApiUrl} from '../src/jira'
-import {createIssueNumberString, extractIssueNumber} from '../src/actions'
+import {createIssuePullNumberString, extractIssueNumber} from '../src/actions'
 
 test('test create jira api url', async () => {
   const subdomain = 'test-domain'
@@ -22,7 +22,7 @@ test('test create jira search url', async () => {
 
 test('extra issue number from description', async () => {
   const issueNumber = '42'
-  const issueNumberString = createIssueNumberString(issueNumber.toString())
+  const issueNumberString = createIssuePullNumberString(issueNumber.toString())
   const issueNumberExtracted = extractIssueNumber(`
     ${issueNumberString}
   `)

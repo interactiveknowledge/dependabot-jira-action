@@ -1,4 +1,6 @@
 import {
+  DependabotAlert,
+  getDependabotOpenAlerts,
   getDependabotOpenPullRequests,
   getPullRequestByIssueId,
   PullRequest
@@ -7,7 +9,8 @@ import {
   closeJiraIssue,
   createJiraIssue,
   jiraApiSearch,
-  getConfluenceDocument
+  getConfluenceDocument,
+  createJiraIssueFromAlerts
 } from './jira'
 import * as core from '@actions/core'
 
@@ -31,8 +34,12 @@ export function extractIssueNumber(description: string): string {
   }
 }
 
-export function createIssueNumberString(pullNumber: string): string {
+export function createIssuePullNumberString(pullNumber: string): string {
   return `PULL_NUMBER_${pullNumber}_PULL_NUMBER`
+}
+
+export function createIssueAlertNumberString(pullNumber: string): string {
+  return `ALERT_NUMBER_${pullNumber}_ALERT_NUMBER`
 }
 
 export async function syncJiraWithOpenDependabotPulls(
@@ -168,6 +175,88 @@ export async function syncJiraWithClosedDependabotPulls(
     return 'success'
   } catch (e) {
     core.debug(`ERROR ${JSON.stringify(e)}`)
+    throw e
+  }
+}
+
+export async function syncJiraWithOpenDependabotAlerts(
+  params: SyncJiraOpen
+): Promise<string> {
+  try {
+    core.setOutput(
+      'Sync jira with open dependabot pulls starting',
+      new Date().toTimeString()
+    )
+    const {repo, owner, label, projectKey, issueType} = params
+    const dependabotAlerts: DependabotAlert[] = await getDependabotOpenAlerts({
+      repo,
+      owner
+    })
+    const jiraTickets = []
+    let projectStatus = 'none'
+
+    for (const alert of dependabotAlerts) {
+      const summary = ``
+      const jiraTicketData = await createJiraIssueFromAlerts({
+        ...alert,
+        label,
+        projectKey,
+        summary,
+        issueType,
+        repoName: repo,
+        repoUrl: `https://github.com/${owner}/${repo}`
+      })
+
+      projectStatus = 'security'
+
+      jiraTickets.push({
+        jiraTicketData,
+        label,
+        projectKey,
+        issueType,
+        ...alert
+      })
+    }
+
+    core.debug(JSON.stringify(jiraTickets))
+
+    // Update confluence.
+    // Projects & Hosting Documents
+    if (
+      process.env.CONFLUENCE_PROJECTS_DOC_ID &&
+      process.env.CONFLUENCE_PROJECTS_DOC_ID !== ''
+    ) {
+      const projectDocId = process.env.CONFLUENCE_PROJECTS_DOC_ID
+      const confluenceData = await getConfluenceDocument({pageId: projectDocId})
+      // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
+
+      core.debug(projectStatus)
+      core.debug(JSON.stringify(confluenceData))
+    }
+
+    let projectPageId = core.getInput('jiraProjectPage')
+    if (projectPageId && projectPageId !== '') {
+      projectPageId = projectPageId.replace(
+        'https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/',
+        ''
+      )
+      projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
+
+      const confluenceData = await getConfluenceDocument({
+        pageId: projectPageId
+      })
+      // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
+
+      core.debug(projectPageId)
+      core.debug(JSON.stringify(confluenceData))
+    }
+
+    core.setOutput(
+      'Sync jira with open dependabot pulls success',
+      new Date().toTimeString()
+    )
+    return 'success'
+  } catch (e) {
     throw e
   }
 }
