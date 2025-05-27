@@ -48,8 +48,24 @@ export async function getDependabotOpenPullRequests(
   const items = []
   for (const pull of data) {
     if (pull?.user?.login === dependabotLoginName) {
-      core.debug(pull.comments_url)
-      core.debug(pull.body)
+      let packageName = pull.title.replace('Bump ', '')
+      packageName = packageName.substring(0, packageName.indexOf(' from'))
+
+      const alertData = await octokit.request(
+        'GET /repos/{owner}/{repo}/dependabot/alerts?package={packageName}&state=open',
+        {
+          owner,
+          repo,
+          packageName,
+          headers: {
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        }
+      )
+
+      core.debug(packageName)
+      core.debug(alertData.data)
+
       const item: PullRequest = {
         url: pull.html_url,
         summary: `Dependabot alert: ${pull.title}`,

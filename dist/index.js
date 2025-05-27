@@ -186,8 +186,18 @@ function getDependabotOpenPullRequests(params) {
         const items = [];
         for (const pull of data) {
             if (((_a = pull === null || pull === void 0 ? void 0 : pull.user) === null || _a === void 0 ? void 0 : _a.login) === dependabotLoginName) {
-                core.debug(pull.comments_url);
-                core.debug(pull.body);
+                let packageName = pull.title.replace('Bump ', '');
+                packageName = packageName.substring(0, packageName.indexOf(' from'));
+                const alertData = yield octokit.request('GET /repos/{owner}/{repo}/dependabot/alerts?package={packageName}&state=open', {
+                    owner,
+                    repo,
+                    packageName,
+                    headers: {
+                        'X-GitHub-Api-Version': '2022-11-28'
+                    }
+                });
+                core.debug(packageName);
+                core.debug(alertData.data);
                 const item = {
                     url: pull.html_url,
                     summary: `Dependabot alert: ${pull.title}`,
