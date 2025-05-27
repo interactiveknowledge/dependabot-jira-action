@@ -11,12 +11,18 @@ interface ApiPostParams {
 interface ApiRequestResponse {
   data: object
 }
-
+interface ApiDocumentResponse {
+  data: object
+}
 interface ApiRequestSearchResponse {
   issues: object[]
 }
 interface SearchIssue {
   jql: string
+}
+
+interface SearchDocument {
+  pageId: string
 }
 
 export interface CreateIssue {
@@ -56,6 +62,20 @@ export function getJiraSearchApiUrl(): string {
   const subdomain = process.env.JIRA_SUBDOMAIN
   const url = `https://${subdomain}.atlassian.net/rest/api/2/search`
   return url
+}
+
+export function getConfluenceDocumentApiUrl(pageId: string): string {
+  const subdomain = process.env.JIRA_SUBDOMAIN
+  const url = `https://${subdomain}.atlassian.net/wiki/rest/api/content/${pageId}?expand=body.editor,version`
+  return url
+}
+
+export function getMarkupForStatusTags(projectStatus: string): string {
+  if (projectStatus === 'security') {
+    return '<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=security+Update&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=security Update" data-macro-schema-version="1"></p>'
+  } else {
+    return '<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Up+To+Date&amp;colour=Green" data-macro-name="status" data-macro-id="cff9a3ad-9446-4833-98b6-beec42cf6727" data-macro-parameters="colour=Green|title=Up To Date" data-macro-schema-version="1"></p>'
+  }
 }
 
 async function jiraApiPost(params: ApiPostParams): Promise<ApiRequestResponse> {
@@ -360,5 +380,31 @@ export async function closeJiraIssue(
       core.error('error in transitionsResponse.json()')
     }
     throw new Error('Failed get transition id')
+  }
+}
+
+export async function getConfluenceDocument({
+  pageId
+}: SearchDocument): Promise<ApiDocumentResponse> {
+  try {
+    const getUrl = getConfluenceDocumentApiUrl(pageId)
+    const requestParams: RequestInit = {
+      method: 'GET',
+      headers: getJiraAuthorizedHeader()
+    }
+
+    const response = await fetch(getUrl, requestParams)
+
+    if (response.status === 200) {
+      return await response.json()
+    } else {
+      const error = await response.json()
+      const errors = Object.values(error.errorMessages)
+      const message = errors.join(',')
+      throw Error(message)
+    }
+  } catch (e) {
+    core.error('Error getting the existing issue')
+    throw new Error('Error getting the existing issue')
   }
 }

@@ -41,6 +41,7 @@ jobs:
           JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           GITHUB_API_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+          CONFLUENCE_PROJECTS_DOC_ID: ${{ secrets.CONFLUENCE_PROJECTS_DOC_ID }}
 ```
 
 # License

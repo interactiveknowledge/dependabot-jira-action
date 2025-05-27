@@ -3,7 +3,12 @@ import {
   getPullRequestByIssueId,
   PullRequest
 } from './github'
-import {closeJiraIssue, createJiraIssue, jiraApiSearch} from './jira'
+import {
+  closeJiraIssue,
+  createJiraIssue,
+  jiraApiSearch,
+  getConfluenceDocument
+} from './jira'
 import * as core from '@actions/core'
 
 export interface SyncJiraOpen {
@@ -43,14 +48,59 @@ export async function syncJiraWithOpenDependabotPulls(
       repo,
       owner
     })
+    const jiraTickets = []
+    let projectStatus = 'none'
+
     for (const pull of dependabotPulls) {
-      await createJiraIssue({
+      const jiraTicketData = await createJiraIssue({
+        label,
+        projectKey,
+        issueType,
+        ...pull
+      })
+
+      if (pull.alerts && pull.alerts.length > 0) {
+        projectStatus = 'security'
+      }
+
+      jiraTickets.push({
+        jiraTicketData,
         label,
         projectKey,
         issueType,
         ...pull
       })
     }
+
+    // Update confluence.
+    // Projects & Hosting Documents
+    if (
+      process.env.CONFLUENCE_PROJECTS_DOC_ID &&
+      process.env.CONFLUENCE_PROJECTS_DOC_ID !== ''
+    ) {
+      const projectDocId = process.env.CONFLUENCE_PROJECTS_DOC_ID
+      const confluenceData = getConfluenceDocument({pageId: projectDocId})
+      // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
+
+      core.debug(projectStatus)
+      core.debug(JSON.stringify(confluenceData))
+    }
+
+    let projectPageId = core.getInput('jiraProjectPage')
+    if (projectPageId && projectPageId !== '') {
+      projectPageId = projectPageId.replace(
+        'https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/',
+        ''
+      )
+      projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
+
+      const confluenceData = getConfluenceDocument({pageId: projectPageId})
+      // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
+
+      core.debug(projectPageId)
+      core.debug(JSON.stringify(confluenceData))
+    }
+
     core.setOutput(
       'Sync jira with open dependabot pulls success',
       new Date().toTimeString()

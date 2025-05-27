@@ -67,10 +67,38 @@ function syncJiraWithOpenDependabotPulls(params) {
                 repo,
                 owner
             });
+            const jiraTickets = [];
+            let projectStatus = 'none';
             for (const pull of dependabotPulls) {
-                yield (0, jira_1.createJiraIssue)(Object.assign({ label,
+                const jiraTicketData = yield (0, jira_1.createJiraIssue)(Object.assign({ label,
                     projectKey,
                     issueType }, pull));
+                if (pull.alerts && pull.alerts.length > 0) {
+                    projectStatus = 'security';
+                }
+                jiraTickets.push(Object.assign({ jiraTicketData,
+                    label,
+                    projectKey,
+                    issueType }, pull));
+            }
+            // Update confluence.
+            // Projects & Hosting Documents
+            if (process.env.CONFLUENCE_PROJECTS_DOC_ID &&
+                process.env.CONFLUENCE_PROJECTS_DOC_ID !== '') {
+                const projectDocId = process.env.CONFLUENCE_PROJECTS_DOC_ID;
+                const confluenceData = (0, jira_1.getConfluenceDocument)({ pageId: projectDocId });
+                // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
+                core.debug(projectStatus);
+                core.debug(JSON.stringify(confluenceData));
+            }
+            let projectPageId = core.getInput('jiraProjectPage');
+            if (projectPageId && projectPageId !== '') {
+                projectPageId = projectPageId.replace('https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/', '');
+                projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'));
+                const confluenceData = (0, jira_1.getConfluenceDocument)({ pageId: projectPageId });
+                // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
+                core.debug(projectPageId);
+                core.debug(JSON.stringify(confluenceData));
             }
             core.setOutput('Sync jira with open dependabot pulls success', new Date().toTimeString());
             return 'success';
@@ -278,7 +306,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.closeJiraIssue = exports.createJiraIssue = exports.jiraApiSearch = exports.getJiraSearchApiUrl = exports.getJiraApiUrlV3 = void 0;
+exports.getConfluenceDocument = exports.closeJiraIssue = exports.createJiraIssue = exports.jiraApiSearch = exports.getMarkupForStatusTags = exports.getConfluenceDocumentApiUrl = exports.getJiraSearchApiUrl = exports.getJiraApiUrlV3 = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const node_fetch_1 = __importDefault(__nccwpck_require__(467));
 const actions_1 = __nccwpck_require__(3623);
@@ -306,6 +334,21 @@ function getJiraSearchApiUrl() {
     return url;
 }
 exports.getJiraSearchApiUrl = getJiraSearchApiUrl;
+function getConfluenceDocumentApiUrl(pageId) {
+    const subdomain = process.env.JIRA_SUBDOMAIN;
+    const url = `https://${subdomain}.atlassian.net/wiki/rest/api/content/${pageId}?expand=body.editor,version`;
+    return url;
+}
+exports.getConfluenceDocumentApiUrl = getConfluenceDocumentApiUrl;
+function getMarkupForStatusTags(projectStatus) {
+    if (projectStatus === 'security') {
+        return '<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=security+Update&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=security Update" data-macro-schema-version="1"></p>';
+    }
+    else {
+        return '<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Up+To+Date&amp;colour=Green" data-macro-name="status" data-macro-id="cff9a3ad-9446-4833-98b6-beec42cf6727" data-macro-parameters="colour=Green|title=Up To Date" data-macro-schema-version="1"></p>';
+    }
+}
+exports.getMarkupForStatusTags = getMarkupForStatusTags;
 function jiraApiPost(params) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -594,6 +637,32 @@ function closeJiraIssue(issueId, transitionName = 'done') {
     });
 }
 exports.closeJiraIssue = closeJiraIssue;
+function getConfluenceDocument({ pageId }) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const getUrl = getConfluenceDocumentApiUrl(pageId);
+            const requestParams = {
+                method: 'GET',
+                headers: getJiraAuthorizedHeader()
+            };
+            const response = yield (0, node_fetch_1.default)(getUrl, requestParams);
+            if (response.status === 200) {
+                return yield response.json();
+            }
+            else {
+                const error = yield response.json();
+                const errors = Object.values(error.errorMessages);
+                const message = errors.join(',');
+                throw Error(message);
+            }
+        }
+        catch (e) {
+            core.error('Error getting the existing issue');
+            throw new Error('Error getting the existing issue');
+        }
+    });
+}
+exports.getConfluenceDocument = getConfluenceDocument;
 
 
 /***/ }),
