@@ -12,6 +12,13 @@ export interface GetPullRequestByIdParams {
   issueNumber: string
 }
 
+export interface DependabotAlert {
+  url: string
+  severity: string
+  vulnerable_version_range: string
+  lastUpdatedAt: string
+  number: string
+}
 export interface PullRequest {
   url: string
   summary: string
@@ -20,6 +27,7 @@ export interface PullRequest {
   repoUrl: string
   lastUpdatedAt: string
   pullNumber: string
+  alerts?: DependabotAlert[]
 }
 
 interface GetPullRequestByIdResponse {
@@ -50,6 +58,7 @@ export async function getDependabotOpenPullRequests(
     if (pull?.user?.login === dependabotLoginName) {
       let packageName = pull.title.replace('Bump ', '')
       packageName = packageName.substring(0, packageName.indexOf(' from'))
+      const alerts = []
 
       const alertData = await octokit.request(
         'GET /repos/{owner}/{repo}/dependabot/alerts?package={packageName}&state=open',
@@ -63,8 +72,20 @@ export async function getDependabotOpenPullRequests(
         }
       )
 
-      core.debug(packageName)
-      core.debug(alertData.data)
+      if (alertData.data) {
+        for (const alert of alertData.data) {
+          const alertItem: DependabotAlert = {
+            number: alert.number,
+            url: alert.html_url,
+            severity: alert.security_vulnerability.severity,
+            vulnerable_version_range:
+              alert.security_vulnerability.vulnerable_version_range,
+            lastUpdatedAt: alert.updated_at
+          }
+
+          alerts.push(alertItem)
+        }
+      }
 
       const item: PullRequest = {
         url: pull.html_url,
@@ -73,7 +94,8 @@ export async function getDependabotOpenPullRequests(
         repoName: pull.base.repo.name,
         repoUrl: pull.base.repo.html_url.replace('***', owner),
         lastUpdatedAt: pull.updated_at,
-        pullNumber: pull.number.toString()
+        pullNumber: pull.number.toString(),
+        alerts
       }
       items.push(item)
     }
