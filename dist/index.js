@@ -54,8 +54,8 @@ function extractIssueNumber(description) {
     }
 }
 exports.extractIssueNumber = extractIssueNumber;
-function createIssueNumberString(pullNumber) {
-    return `PULL_NUMBER_${pullNumber}_PULL_NUMBER`;
+function createIssueNumberString(pullNumber, stringType) {
+    return `${stringType}_NUMBER_${pullNumber}_${stringType}_NUMBER`;
 }
 exports.createIssueNumberString = createIssueNumberString;
 function syncJiraWithOpenDependabotPulls(params) {
@@ -63,16 +63,16 @@ function syncJiraWithOpenDependabotPulls(params) {
         try {
             core.setOutput('Sync jira with open dependabot pulls starting', new Date().toTimeString());
             const { repo, owner, label, projectKey, issueType } = params;
-            const dependabotPulls = yield (0, github_1.getDependabotOpenPullRequests)({
+            const dependabotPulls = yield (0, github_1.getDependabotOpenAlerts)({
                 repo,
                 owner
             });
             for (const pull of dependabotPulls) {
                 yield (0, jira_1.createJiraIssue)(Object.assign({ label,
                     projectKey,
-                    issueType }, pull));
+                    issueType, stringType: 'ALERT' }, pull));
             }
-            core.setOutput('Sync jira with open dependabot pulls success', new Date().toTimeString());
+            core.setOutput('Sync jira with open dependabot alerts success', new Date().toTimeString());
             return 'success';
         }
         catch (e) {
@@ -166,7 +166,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getPullRequestByIssueId = exports.getDependabotOpenPullRequests = void 0;
+exports.getDependabotOpenAlerts = exports.getPullRequestByIssueId = exports.getDependabotOpenPullRequests = void 0;
 const github_1 = __nccwpck_require__(5438);
 const core = __importStar(__nccwpck_require__(2186));
 function getDependabotOpenPullRequests(params) {
@@ -186,7 +186,6 @@ function getDependabotOpenPullRequests(params) {
         const items = [];
         for (const pull of data) {
             if (((_a = pull === null || pull === void 0 ? void 0 : pull.user) === null || _a === void 0 ? void 0 : _a.login) === dependabotLoginName) {
-                core.debug(pull);
                 const item = {
                     url: pull.html_url,
                     summary: `Dependabot alert for ${repo}: ${pull.title}`,
@@ -229,6 +228,42 @@ function getPullRequestByIssueId(params) {
     });
 }
 exports.getPullRequestByIssueId = getPullRequestByIssueId;
+function getDependabotOpenAlerts(params) {
+    var _a;
+    return __awaiter(this, void 0, void 0, function* () {
+        const { owner, repo } = params;
+        const githubApiKey = process.env.GITHUB_API_TOKEN || '';
+        const octokit = (0, github_1.getOctokit)(githubApiKey);
+        const { data } = yield octokit.request('GET /repos/{owner}/{repo}/dependabot/alerts?state=open', {
+            owner,
+            repo,
+            headers: {
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+        });
+        const items = [];
+        for (const alert of data) {
+            const packageName = [
+                (_a = alert.security_vulnerability.package) === null || _a === void 0 ? void 0 : _a.ecosystem,
+                alert.security_vulnerability.package.name
+            ].join('/');
+            core.debug(alert);
+            const item = {
+                url: alert.html_url,
+                severity: alert.security_vulnerability.severity,
+                summary: `Dependabot alert for ${repo}: [${alert.security_vulnerability.severity}] ${packageName} ${alert.security_vulnerability.vulnerable_version_range}`,
+                description: `${alert.security_advisory.summary}: ${alert.security_advisory.description}`,
+                repoName: repo,
+                repoUrl: `https://github.com/${owner}/${repo}`,
+                lastUpdatedAt: alert.updated_at,
+                pullNumber: alert.number.toString()
+            };
+            items.push(item);
+        }
+        return items;
+    });
+}
+exports.getDependabotOpenAlerts = getDependabotOpenAlerts;
 
 
 /***/ }),
@@ -355,9 +390,10 @@ function jiraApiSearch({ jql }) {
     });
 }
 exports.jiraApiSearch = jiraApiSearch;
-function createJiraIssue({ label, projectKey, summary, issueType = 'Bug', repoName, repoUrl, url, lastUpdatedAt, pullNumber }) {
+function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, pullNumber, stringType }) {
     return __awaiter(this, void 0, void 0, function* () {
-        const jql = `summary~"${summary}" AND description~"${(0, actions_1.createIssueNumberString)(pullNumber)}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
+        const issueNumberString = (0, actions_1.createIssueNumberString)(pullNumber, stringType);
+        const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
         const existingIssuesResponse = yield jiraApiSearch({
             jql
         });
@@ -390,7 +426,7 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Bug', repoNa
                             type: 'paragraph',
                             content: [
                                 {
-                                    text: `Application url: ${repoUrl}`,
+                                    text: `Repository url: ${repoUrl}`,
                                     type: 'text'
                                 }
                             ]
@@ -399,7 +435,7 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Bug', repoNa
                             type: 'paragraph',
                             content: [
                                 {
-                                    text: `Pull request last updated at: ${lastUpdatedAt}`,
+                                    text: `Dependabot Alert last updated at: ${lastUpdatedAt}`,
                                     type: 'text'
                                 }
                             ]
@@ -409,7 +445,7 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Bug', repoNa
                             content: [
                                 {
                                     type: 'text',
-                                    text: `Pull request url:`
+                                    text: `Dependabot Alert url:`
                                 },
                                 {
                                     type: 'text',
@@ -430,7 +466,7 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Bug', repoNa
                             content: [
                                 {
                                     type: 'text',
-                                    text: (0, actions_1.createIssueNumberString)(pullNumber)
+                                    text: issueNumberString
                                 }
                             ]
                         }

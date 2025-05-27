@@ -29,6 +29,7 @@ export interface CreateIssue {
   repoUrl: string
   lastUpdatedAt: string
   pullNumber: string
+  stringType: string
 }
 
 function getJiraAuthorizedHeader(): HeaderInit {
@@ -108,16 +109,16 @@ export async function createJiraIssue({
   label,
   projectKey,
   summary,
-  issueType = 'Bug',
+  issueType = 'Story',
   repoName,
   repoUrl,
   url,
   lastUpdatedAt,
-  pullNumber
+  pullNumber,
+  stringType
 }: CreateIssue): Promise<ApiRequestResponse> {
-  const jql = `summary~"${summary}" AND description~"${createIssueNumberString(
-    pullNumber
-  )}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
+  const issueNumberString = createIssueNumberString(pullNumber, stringType)
+  const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
   const existingIssuesResponse = await jiraApiSearch({
     jql
   })
@@ -130,6 +131,7 @@ export async function createJiraIssue({
     return {data: existingIssuesResponse.issues[0]}
   }
   core.debug(`Did not find exising, trying create`)
+
   const body = {
     fields: {
       labels: [label],
@@ -152,7 +154,7 @@ export async function createJiraIssue({
             type: 'paragraph',
             content: [
               {
-                text: `Application url: ${repoUrl}`,
+                text: `Repository url: ${repoUrl}`,
                 type: 'text'
               }
             ]
@@ -161,7 +163,7 @@ export async function createJiraIssue({
             type: 'paragraph',
             content: [
               {
-                text: `Pull request last updated at: ${lastUpdatedAt}`,
+                text: `Dependabot Alert last updated at: ${lastUpdatedAt}`,
                 type: 'text'
               }
             ]
@@ -171,7 +173,7 @@ export async function createJiraIssue({
             content: [
               {
                 type: 'text',
-                text: `Pull request url:`
+                text: `Dependabot Alert url:`
               },
               {
                 type: 'text',
@@ -192,7 +194,7 @@ export async function createJiraIssue({
             content: [
               {
                 type: 'text',
-                text: createIssueNumberString(pullNumber)
+                text: issueNumberString
               }
             ]
           }
