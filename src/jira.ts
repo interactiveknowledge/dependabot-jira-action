@@ -55,6 +55,7 @@ export interface CreateIssueFromAlert {
   severity: string
   vulnerable_version_range: string
   number: string
+  issueSummary: string
 }
 
 function getJiraAuthorizedHeader(): HeaderInit {
@@ -328,10 +329,11 @@ export async function createJiraIssueFromAlerts({
   number,
   severity,
   vulnerable_version_range,
-  description
+  description,
+  issueSummary
 }: CreateIssueFromAlert): Promise<ApiRequestResponse> {
   const issueNumberString = createIssueAlertNumberString(number)
-  const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
+  const jql = `summary~"${issueSummary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
   const existingIssuesResponse = await jiraApiSearch({
     jql
   })

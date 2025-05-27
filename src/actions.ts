@@ -196,14 +196,14 @@ export async function syncJiraWithOpenDependabotAlerts(
     let projectStatus = 'none'
 
     for (const alert of dependabotAlerts) {
-      const summary = `Dependabot ${alert.severity.toUpperCase()} alert for ${
+      const issueSummary = `Dependabot ${alert.severity.toUpperCase()} alert for ${
         alert.vulnerable_version_range
-      }`
+      }: ${alert.summary}`
       const jiraTicketData = await createJiraIssueFromAlerts({
         ...alert,
         label,
         projectKey,
-        summary,
+        issueSummary,
         issueType,
         repoName: repo,
         repoUrl: `https://github.com/${owner}/${repo}`

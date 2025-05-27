@@ -168,10 +168,10 @@ function syncJiraWithOpenDependabotAlerts(params) {
             const jiraTickets = [];
             let projectStatus = 'none';
             for (const alert of dependabotAlerts) {
-                const summary = ``;
+                const issueSummary = `Dependabot ${alert.severity.toUpperCase()} alert for ${alert.vulnerable_version_range}: ${alert.summary}`;
                 const jiraTicketData = yield (0, jira_1.createJiraIssueFromAlerts)(Object.assign(Object.assign({}, alert), { label,
                     projectKey,
-                    summary,
+                    issueSummary,
                     issueType, repoName: repo, repoUrl: `https://github.com/${owner}/${repo}` }));
                 projectStatus = 'security';
                 jiraTickets.push(Object.assign({ jiraTicketData,
@@ -648,10 +648,10 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repo
     });
 }
 exports.createJiraIssue = createJiraIssue;
-function createJiraIssueFromAlerts({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, severity, vulnerable_version_range, description }) {
+function createJiraIssueFromAlerts({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, severity, vulnerable_version_range, description, issueSummary }) {
     return __awaiter(this, void 0, void 0, function* () {
         const issueNumberString = (0, actions_1.createIssueAlertNumberString)(number);
-        const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
+        const jql = `summary~"${issueSummary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
         const existingIssuesResponse = yield jiraApiSearch({
             jql
         });
