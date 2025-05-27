@@ -394,7 +394,7 @@ exports.jiraApiSearch = jiraApiSearch;
 function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, pullNumber, stringType }) {
     return __awaiter(this, void 0, void 0, function* () {
         const issueNumberString = (0, actions_1.createIssueNumberString)(pullNumber, stringType);
-        const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
+        const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
         const existingIssuesResponse = yield jiraApiSearch({
             jql
         });
