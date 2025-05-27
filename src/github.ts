@@ -22,17 +22,6 @@ export interface PullRequest {
   pullNumber: string
 }
 
-export interface DependabotAlert {
-  url: string
-  severity: string
-  summary: string
-  description: string
-  repoName: string
-  repoUrl: string
-  lastUpdatedAt: string
-  pullNumber: string
-}
-
 interface GetPullRequestByIdResponse {
   id: number
   url: string
@@ -59,9 +48,11 @@ export async function getDependabotOpenPullRequests(
   const items = []
   for (const pull of data) {
     if (pull?.user?.login === dependabotLoginName) {
+      core.debug(pull.comments_url)
+      core.debug(pull.body)
       const item: PullRequest = {
         url: pull.html_url,
-        summary: `Dependabot alert for ${repo}: ${pull.title}`,
+        summary: `Dependabot alert: ${pull.title}`,
         description: pull.body,
         repoName: pull.base.repo.name,
         repoUrl: pull.base.repo.html_url.replace('***', owner),
@@ -100,46 +91,4 @@ export async function getPullRequestByIssueId(
       state: 'none'
     }
   }
-}
-
-export async function getDependabotOpenAlerts(
-  params: GetPullRequestParams
-): Promise<DependabotAlert[]> {
-  const {owner, repo} = params
-  const githubApiKey = process.env.GITHUB_API_TOKEN || ''
-  const octokit = getOctokit(githubApiKey)
-  const {data} = await octokit.request(
-    'GET /repos/{owner}/{repo}/dependabot/alerts?state=open',
-    {
-      owner,
-      repo,
-      headers: {
-        'X-GitHub-Api-Version': '2022-11-28'
-      }
-    }
-  )
-  const items = []
-  for (const alert of data) {
-    const packageName = [
-      alert.security_vulnerability.package?.ecosystem,
-      alert.security_vulnerability.package.name
-    ].join('/')
-
-    core.debug(alert)
-
-    const severity = alert.security_vulnerability.severity.toUpperCase()
-
-    const item: DependabotAlert = {
-      url: alert.html_url,
-      severity: alert.security_vulnerability.severity,
-      summary: `Dependabot ${severity} severity alert: ${packageName} ${alert.security_vulnerability.vulnerable_version_range}`,
-      description: `${alert.security_advisory.summary}: ${alert.security_advisory.description}`,
-      repoName: repo,
-      repoUrl: `https://github.com/${owner}/${repo}`,
-      lastUpdatedAt: alert.updated_at,
-      pullNumber: alert.number.toString()
-    }
-    items.push(item)
-  }
-  return items
 }

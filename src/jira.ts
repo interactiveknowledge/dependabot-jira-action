@@ -29,7 +29,6 @@ export interface CreateIssue {
   repoUrl: string
   lastUpdatedAt: string
   pullNumber: string
-  stringType: string
 }
 
 function getJiraAuthorizedHeader(): HeaderInit {
@@ -114,10 +113,9 @@ export async function createJiraIssue({
   repoUrl,
   url,
   lastUpdatedAt,
-  pullNumber,
-  stringType
+  pullNumber
 }: CreateIssue): Promise<ApiRequestResponse> {
-  const issueNumberString = createIssueNumberString(pullNumber, stringType)
+  const issueNumberString = createIssueNumberString(pullNumber)
   const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
   const existingIssuesResponse = await jiraApiSearch({
     jql
@@ -131,7 +129,6 @@ export async function createJiraIssue({
     return {data: existingIssuesResponse.issues[0]}
   }
   core.debug(`Did not find exising, trying create`)
-
   const body = {
     fields: {
       labels: [label],
@@ -154,20 +151,8 @@ export async function createJiraIssue({
             type: 'paragraph',
             content: [
               {
-                type: 'text',
-                text: `Repository url:`
-              },
-              {
-                type: 'text',
-                text: `${repoUrl}`,
-                marks: [
-                  {
-                    type: 'link',
-                    attrs: {
-                      href: repoUrl
-                    }
-                  }
-                ]
+                text: `Application url: ${repoUrl}`,
+                type: 'text'
               }
             ]
           },
@@ -175,7 +160,7 @@ export async function createJiraIssue({
             type: 'paragraph',
             content: [
               {
-                text: `Dependabot Alert last updated at: ${lastUpdatedAt}`,
+                text: `Pull request last updated at: ${lastUpdatedAt}`,
                 type: 'text'
               }
             ]
@@ -185,7 +170,7 @@ export async function createJiraIssue({
             content: [
               {
                 type: 'text',
-                text: `Dependabot Alert url:`
+                text: `Pull request url:`
               },
               {
                 type: 'text',

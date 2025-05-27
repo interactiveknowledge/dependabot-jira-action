@@ -22,10 +22,7 @@ test('test create jira search url', async () => {
 
 test('extra issue number from description', async () => {
   const issueNumber = '42'
-  const issueNumberString = createIssueNumberString(
-    issueNumber.toString(),
-    'PULL'
-  )
+  const issueNumberString = createIssueNumberString(issueNumber.toString())
   const issueNumberExtracted = extractIssueNumber(`
     ${issueNumberString}
   `)

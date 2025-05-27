@@ -1,7 +1,7 @@
 import {
-  getDependabotOpenAlerts,
+  getDependabotOpenPullRequests,
   getPullRequestByIssueId,
-  DependabotAlert
+  PullRequest
 } from './github'
 import {closeJiraIssue, createJiraIssue, jiraApiSearch} from './jira'
 import * as core from '@actions/core'
@@ -26,11 +26,8 @@ export function extractIssueNumber(description: string): string {
   }
 }
 
-export function createIssueNumberString(
-  pullNumber: string,
-  stringType: string
-): string {
-  return `${stringType}_NUMBER_${pullNumber}_${stringType}_NUMBER`
+export function createIssueNumberString(pullNumber: string): string {
+  return `PULL_NUMBER_${pullNumber}_PULL_NUMBER`
 }
 
 export async function syncJiraWithOpenDependabotPulls(
@@ -42,7 +39,7 @@ export async function syncJiraWithOpenDependabotPulls(
       new Date().toTimeString()
     )
     const {repo, owner, label, projectKey, issueType} = params
-    const dependabotPulls: DependabotAlert[] = await getDependabotOpenAlerts({
+    const dependabotPulls: PullRequest[] = await getDependabotOpenPullRequests({
       repo,
       owner
     })
@@ -51,12 +48,11 @@ export async function syncJiraWithOpenDependabotPulls(
         label,
         projectKey,
         issueType,
-        stringType: 'ALERT',
         ...pull
       })
     }
     core.setOutput(
-      'Sync jira with open dependabot alerts success',
+      'Sync jira with open dependabot pulls success',
       new Date().toTimeString()
     )
     return 'success'
