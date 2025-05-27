@@ -154,8 +154,20 @@ export async function createJiraIssue({
             type: 'paragraph',
             content: [
               {
-                text: `Repository url: ${repoUrl}`,
-                type: 'text'
+                type: 'text',
+                text: `Repository url:`
+              },
+              {
+                type: 'text',
+                text: `${repoUrl}`,
+                marks: [
+                  {
+                    type: 'link',
+                    attrs: {
+                      href: repoUrl
+                    }
+                  }
+                ]
               }
             ]
           },

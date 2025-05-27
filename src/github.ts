@@ -127,10 +127,12 @@ export async function getDependabotOpenAlerts(
 
     core.debug(alert)
 
+    const severity = alert.security_vulnerability.severity.toUpperCase()
+
     const item: DependabotAlert = {
       url: alert.html_url,
       severity: alert.security_vulnerability.severity,
-      summary: `Dependabot alert for ${repo}: [${alert.security_vulnerability.severity}] ${packageName} ${alert.security_vulnerability.vulnerable_version_range}`,
+      summary: `Dependabot ${severity} severity alert: ${packageName} ${alert.security_vulnerability.vulnerable_version_range}`,
       description: `${alert.security_advisory.summary}: ${alert.security_advisory.description}`,
       repoName: repo,
       repoUrl: `https://github.com/${owner}/${repo}`,
