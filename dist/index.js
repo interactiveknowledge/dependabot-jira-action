@@ -754,7 +754,7 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
                 project: {
                     key: projectKey
                 },
-                issueSummary,
+                summary: issueSummary,
                 description: {
                     content: bodyContent,
                     type: 'doc',

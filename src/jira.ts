@@ -444,7 +444,7 @@ export async function createJiraIssueFromAlerts({
       project: {
         key: projectKey
       },
-      issueSummary,
+      summary: issueSummary,
       description: {
         content: bodyContent,
         type: 'doc',
