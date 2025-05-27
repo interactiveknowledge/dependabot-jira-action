@@ -133,29 +133,6 @@ exports.syncJiraWithClosedDependabotPulls = syncJiraWithClosedDependabotPulls;
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -168,7 +145,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getPullRequestByIssueId = exports.getDependabotOpenPullRequests = void 0;
 const github_1 = __nccwpck_require__(5438);
-const core = __importStar(__nccwpck_require__(2186));
 function getDependabotOpenPullRequests(params) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
@@ -188,6 +164,8 @@ function getDependabotOpenPullRequests(params) {
             if (((_a = pull === null || pull === void 0 ? void 0 : pull.user) === null || _a === void 0 ? void 0 : _a.login) === dependabotLoginName) {
                 let packageName = pull.title.replace('Bump ', '');
                 packageName = packageName.substring(0, packageName.indexOf(' from'));
+                let pullRequestSummary = `Dependabot alert: ${pull.title}`;
+                const alerts = [];
                 const alertData = yield octokit.request('GET /repos/{owner}/{repo}/dependabot/alerts?package={packageName}&state=open', {
                     owner,
                     repo,
@@ -196,16 +174,31 @@ function getDependabotOpenPullRequests(params) {
                         'X-GitHub-Api-Version': '2022-11-28'
                     }
                 });
-                core.debug(packageName);
-                core.debug(alertData.data);
+                if (alertData.data) {
+                    for (const alert of alertData.data) {
+                        const alertItem = {
+                            number: alert.number,
+                            url: alert.html_url,
+                            severity: alert.security_vulnerability.severity,
+                            vulnerable_version_range: alert.security_vulnerability.vulnerable_version_range,
+                            lastUpdatedAt: alert.updated_at,
+                            description: alert.security_advisory.description
+                        };
+                        alerts.push(alertItem);
+                    }
+                    if (alertData.data.length === 1 && alerts[0].severity) {
+                        pullRequestSummary = `Dependabot ${alerts[0].severity.toUpperCase()} alert: ${pull.title}`;
+                    }
+                }
                 const item = {
                     url: pull.html_url,
-                    summary: `Dependabot alert: ${pull.title}`,
+                    summary: pullRequestSummary,
                     description: pull.body,
                     repoName: pull.base.repo.name,
                     repoUrl: pull.base.repo.html_url.replace('***', owner),
                     lastUpdatedAt: pull.updated_at,
-                    pullNumber: pull.number.toString()
+                    pullNumber: pull.number.toString(),
+                    alerts
                 };
                 items.push(item);
             }
@@ -366,7 +359,7 @@ function jiraApiSearch({ jql }) {
     });
 }
 exports.jiraApiSearch = jiraApiSearch;
-function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, pullNumber }) {
+function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, pullNumber, alerts }) {
     return __awaiter(this, void 0, void 0, function* () {
         const issueNumberString = (0, actions_1.createIssueNumberString)(pullNumber);
         const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
@@ -380,6 +373,113 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repo
             return { data: existingIssuesResponse.issues[0] };
         }
         core.debug(`Did not find exising, trying create`);
+        const bodyContent = [
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        text: `Application repo: ${repoName}`,
+                        type: 'text'
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        text: `Application url: ${repoUrl}`,
+                        type: 'text'
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        text: `Pull request last updated at: ${lastUpdatedAt}`,
+                        type: 'text'
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: `Pull request url:`
+                    },
+                    {
+                        type: 'text',
+                        text: `${url}`,
+                        marks: [
+                            {
+                                type: 'link',
+                                attrs: {
+                                    href: url
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: issueNumberString
+                    }
+                ]
+            }
+        ];
+        if (alerts && alerts.length > 0) {
+            for (const alert of alerts) {
+                bodyContent.push({
+                    type: 'paragraph',
+                    content: [
+                        {
+                            type: 'text',
+                            text: `------ ${alert.severity.toUpperCase()}: ${alert.vulnerable_version_range}  ------`
+                        }
+                    ]
+                });
+                bodyContent.push({
+                    type: 'paragraph',
+                    content: [
+                        {
+                            type: 'text',
+                            text: alert.description
+                        }
+                    ]
+                });
+                bodyContent.push({
+                    type: 'paragraph',
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Alert Number ${alert.number}`,
+                            marks: [
+                                {
+                                    type: 'link',
+                                    attrs: {
+                                        href: alert.url
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                });
+                bodyContent.push({
+                    type: 'paragraph',
+                    content: [
+                        {
+                            type: 'text',
+                            text: `------------`
+                        }
+                    ]
+                });
+            }
+        }
         const body = {
             fields: {
                 labels: [label],
@@ -388,65 +488,7 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repo
                 },
                 summary,
                 description: {
-                    content: [
-                        {
-                            type: 'paragraph',
-                            content: [
-                                {
-                                    text: `Application repo: ${repoName}`,
-                                    type: 'text'
-                                }
-                            ]
-                        },
-                        {
-                            type: 'paragraph',
-                            content: [
-                                {
-                                    text: `Application url: ${repoUrl}`,
-                                    type: 'text'
-                                }
-                            ]
-                        },
-                        {
-                            type: 'paragraph',
-                            content: [
-                                {
-                                    text: `Pull request last updated at: ${lastUpdatedAt}`,
-                                    type: 'text'
-                                }
-                            ]
-                        },
-                        {
-                            type: 'paragraph',
-                            content: [
-                                {
-                                    type: 'text',
-                                    text: `Pull request url:`
-                                },
-                                {
-                                    type: 'text',
-                                    text: `${url}`,
-                                    marks: [
-                                        {
-                                            type: 'link',
-                                            attrs: {
-                                                href: url
-                                            }
-                                        }
-                                    ]
-                                }
-                            ]
-                        },
-                        {
-                            type: 'paragraph',
-                            content: [
-                                {
-                                    type: 'text',
-                                    text: issueNumberString
-                                }
-                            ]
-                        }
-                    ],
+                    content: bodyContent,
                     type: 'doc',
                     version: 1
                 },

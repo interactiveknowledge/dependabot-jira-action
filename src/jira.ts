@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import fetch, {HeaderInit, RequestInit, Response} from 'node-fetch'
 import {createIssueNumberString} from './actions'
+import {DependabotAlert} from './github'
 
 interface ApiPostParams {
   url: string
@@ -29,6 +30,7 @@ export interface CreateIssue {
   repoUrl: string
   lastUpdatedAt: string
   pullNumber: string
+  alerts?: DependabotAlert[]
 }
 
 function getJiraAuthorizedHeader(): HeaderInit {
@@ -113,7 +115,8 @@ export async function createJiraIssue({
   repoUrl,
   url,
   lastUpdatedAt,
-  pullNumber
+  pullNumber,
+  alerts
 }: CreateIssue): Promise<ApiRequestResponse> {
   const issueNumberString = createIssueNumberString(pullNumber)
   const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
@@ -129,6 +132,117 @@ export async function createJiraIssue({
     return {data: existingIssuesResponse.issues[0]}
   }
   core.debug(`Did not find exising, trying create`)
+  const bodyContent = [
+    {
+      type: 'paragraph',
+      content: [
+        {
+          text: `Application repo: ${repoName}`,
+          type: 'text'
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          text: `Application url: ${repoUrl}`,
+          type: 'text'
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          text: `Pull request last updated at: ${lastUpdatedAt}`,
+          type: 'text'
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `Pull request url:`
+        },
+        {
+          type: 'text',
+          text: `${url}`,
+          marks: [
+            {
+              type: 'link',
+              attrs: {
+                href: url
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: issueNumberString
+        }
+      ]
+    }
+  ]
+
+  if (alerts && alerts.length > 0) {
+    for (const alert of alerts) {
+      bodyContent.push({
+        type: 'paragraph',
+        content: [
+          {
+            type: 'text',
+            text: `------ ${alert.severity.toUpperCase()}: ${
+              alert.vulnerable_version_range
+            }  ------`
+          }
+        ]
+      })
+      bodyContent.push({
+        type: 'paragraph',
+        content: [
+          {
+            type: 'text',
+            text: alert.description
+          }
+        ]
+      })
+      bodyContent.push({
+        type: 'paragraph',
+        content: [
+          {
+            type: 'text',
+            text: `Alert Number ${alert.number}`,
+            marks: [
+              {
+                type: 'link',
+                attrs: {
+                  href: alert.url
+                }
+              }
+            ]
+          }
+        ]
+      })
+      bodyContent.push({
+        type: 'paragraph',
+        content: [
+          {
+            type: 'text',
+            text: `------------`
+          }
+        ]
+      })
+    }
+  }
+
   const body = {
     fields: {
       labels: [label],
@@ -137,65 +251,7 @@ export async function createJiraIssue({
       },
       summary,
       description: {
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                text: `Application repo: ${repoName}`,
-                type: 'text'
-              }
-            ]
-          },
-          {
-            type: 'paragraph',
-            content: [
-              {
-                text: `Application url: ${repoUrl}`,
-                type: 'text'
-              }
-            ]
-          },
-          {
-            type: 'paragraph',
-            content: [
-              {
-                text: `Pull request last updated at: ${lastUpdatedAt}`,
-                type: 'text'
-              }
-            ]
-          },
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'text',
-                text: `Pull request url:`
-              },
-              {
-                type: 'text',
-                text: `${url}`,
-                marks: [
-                  {
-                    type: 'link',
-                    attrs: {
-                      href: url
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'text',
-                text: issueNumberString
-              }
-            ]
-          }
-        ],
+        content: bodyContent,
         type: 'doc',
         version: 1
       },
@@ -205,6 +261,7 @@ export async function createJiraIssue({
     },
     update: {}
   }
+
   const data = await jiraApiPost({
     url: getJiraApiUrlV3('/issue'),
     data: body

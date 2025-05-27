@@ -1,5 +1,4 @@
 import {getOctokit} from '@actions/github'
-import * as core from '@actions/core'
 
 export interface GetPullRequestParams {
   owner: string
@@ -18,6 +17,7 @@ export interface DependabotAlert {
   vulnerable_version_range: string
   lastUpdatedAt: string
   number: string
+  description: string
 }
 export interface PullRequest {
   url: string
@@ -58,6 +58,7 @@ export async function getDependabotOpenPullRequests(
     if (pull?.user?.login === dependabotLoginName) {
       let packageName = pull.title.replace('Bump ', '')
       packageName = packageName.substring(0, packageName.indexOf(' from'))
+      let pullRequestSummary = `Dependabot alert: ${pull.title}`
       const alerts = []
 
       const alertData = await octokit.request(
@@ -80,16 +81,23 @@ export async function getDependabotOpenPullRequests(
             severity: alert.security_vulnerability.severity,
             vulnerable_version_range:
               alert.security_vulnerability.vulnerable_version_range,
-            lastUpdatedAt: alert.updated_at
+            lastUpdatedAt: alert.updated_at,
+            description: alert.security_advisory.description
           }
 
           alerts.push(alertItem)
+        }
+
+        if (alertData.data.length === 1 && alerts[0].severity) {
+          pullRequestSummary = `Dependabot ${alerts[0].severity.toUpperCase()} alert: ${
+            pull.title
+          }`
         }
       }
 
       const item: PullRequest = {
         url: pull.html_url,
-        summary: `Dependabot alert: ${pull.title}`,
+        summary: pullRequestSummary,
         description: pull.body,
         repoName: pull.base.repo.name,
         repoUrl: pull.base.repo.html_url.replace('***', owner),
