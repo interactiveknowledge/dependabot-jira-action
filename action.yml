@@ -25,6 +25,18 @@ inputs:
     required: true
     description: 'Whether to auto-resolve jira issue when PR is merged into branch'
     default: "false"
+  ikProjectDomain:
+    required: false
+    description: 'The live url of the project'
+  jiraProjectPage:
+    required: false
+    description: 'The confluence document Url'
+  ikDevSite:
+    required: false
+    description: 'The dev url'
+  ikTeamworkProject:
+    required: false
+    description: 'The teamworl prject Url'
 runs:
   using: 'node16'
   main: 'dist/index.js'
