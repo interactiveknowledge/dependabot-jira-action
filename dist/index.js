@@ -379,16 +379,15 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repo
                 content: [
                     {
                         text: `Application repo: ${repoName}`,
-                        type: 'text'
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        text: `Application url: ${repoUrl}`,
-                        type: 'text'
+                        type: 'text',
+                        marks: [
+                            {
+                                type: 'link',
+                                attrs: {
+                                    href: repoUrl
+                                }
+                            }
+                        ]
                     }
                 ]
             },
@@ -406,7 +405,7 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repo
                 content: [
                     {
                         type: 'text',
-                        text: `Pull request url:`
+                        text: `Pull request url: `
                     },
                     {
                         type: 'text',
@@ -439,7 +438,16 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repo
                     content: [
                         {
                             type: 'text',
-                            text: `------ ${alert.severity.toUpperCase()}: ${alert.vulnerable_version_range}  ------`
+                            text: `------ ${alert.severity.toUpperCase()} Vulnerability ------`
+                        }
+                    ]
+                });
+                bodyContent.push({
+                    type: 'paragraph',
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Version Range: ${alert.vulnerable_version_range}`
                         }
                     ]
                 });

@@ -138,16 +138,15 @@ export async function createJiraIssue({
       content: [
         {
           text: `Application repo: ${repoName}`,
-          type: 'text'
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          text: `Application url: ${repoUrl}`,
-          type: 'text'
+          type: 'text',
+          marks: [
+            {
+              type: 'link',
+              attrs: {
+                href: repoUrl
+              }
+            }
+          ]
         }
       ]
     },
@@ -165,7 +164,7 @@ export async function createJiraIssue({
       content: [
         {
           type: 'text',
-          text: `Pull request url:`
+          text: `Pull request url: `
         },
         {
           type: 'text',
@@ -199,12 +198,21 @@ export async function createJiraIssue({
         content: [
           {
             type: 'text',
-            text: `------ ${alert.severity.toUpperCase()}: ${
-              alert.vulnerable_version_range
-            }  ------`
+            text: `------ ${alert.severity.toUpperCase()} Vulnerability ------`
           }
         ]
       })
+
+      bodyContent.push({
+        type: 'paragraph',
+        content: [
+          {
+            type: 'text',
+            text: `Version Range: ${alert.vulnerable_version_range}`
+          }
+        ]
+      })
+
       bodyContent.push({
         type: 'paragraph',
         content: [
