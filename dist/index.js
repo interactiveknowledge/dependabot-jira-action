@@ -168,7 +168,7 @@ function syncJiraWithOpenDependabotAlerts(params) {
             const jiraTickets = [];
             let projectStatus = 'none';
             for (const alert of dependabotAlerts) {
-                const issueSummary = `Dependabot ${alert.severity.toUpperCase()} alert for ${alert.vulnerable_version_range}: ${alert.summary}`;
+                const issueSummary = `Dependabot ${alert.severity.toUpperCase()} alert: ${alert.summary}`;
                 const jiraTicketData = yield (0, jira_1.createJiraIssueFromAlerts)(Object.assign(Object.assign({}, alert), { label,
                     projectKey,
                     issueSummary,
@@ -669,6 +669,24 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
                 content: [
                     {
                         type: 'text',
+                        text: `------ ${severity.toUpperCase()} Vulnerability ------`
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: `Version Range Affected: ${vulnerable_version_range}`
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
                         text: description
                     }
                 ]
@@ -717,24 +735,6 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
                                 }
                             }
                         ]
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: `------ ${severity.toUpperCase()} Vulnerability ------`
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: `Version Range: ${vulnerable_version_range}`
                     }
                 ]
             },

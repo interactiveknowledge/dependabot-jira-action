@@ -358,6 +358,24 @@ export async function createJiraIssueFromAlerts({
       content: [
         {
           type: 'text',
+          text: `------ ${severity.toUpperCase()} Vulnerability ------`
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `Version Range Affected: ${vulnerable_version_range}`
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
           text: description
         }
       ]
@@ -406,24 +424,6 @@ export async function createJiraIssueFromAlerts({
               }
             }
           ]
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: `------ ${severity.toUpperCase()} Vulnerability ------`
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: `Version Range: ${vulnerable_version_range}`
         }
       ]
     },
