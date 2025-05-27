@@ -462,7 +462,7 @@ export async function createJiraIssueFromAlerts({
     data: body
   })
   core.debug(`Create issue success`)
-  return {data}
+  return {data: data.data}
 }
 
 export async function closeJiraIssue(

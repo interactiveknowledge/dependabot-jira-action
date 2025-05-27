@@ -174,7 +174,7 @@ function syncJiraWithOpenDependabotAlerts(params) {
                     issueSummary,
                     issueType, repoName: repo, repoUrl: `https://github.com/${owner}/${repo}` }));
                 projectStatus = 'security';
-                jiraTickets.push(Object.assign(Object.assign({}, alert), jiraTicketData.data));
+                jiraTickets.push(Object.assign(Object.assign({}, alert), { jiraIssue: jiraTicketData.data }));
             }
             core.debug(projectStatus);
             core.debug(JSON.stringify(jiraTickets));
@@ -771,7 +771,7 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
             data: body
         });
         core.debug(`Create issue success`);
-        return { data };
+        return { data: data.data };
     });
 }
 exports.createJiraIssueFromAlerts = createJiraIssueFromAlerts;

@@ -213,7 +213,7 @@ export async function syncJiraWithOpenDependabotAlerts(
 
       jiraTickets.push({
         ...alert,
-        ...jiraTicketData.data
+        jiraIssue: jiraTicketData.data
       })
     }
 
