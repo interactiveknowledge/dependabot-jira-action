@@ -366,8 +366,8 @@ export async function syncJiraWithOpenDependabotAlerts(
 
       if (confluenceData) {
         const currentHtml = confluenceData.body.editor.value
-        const newVersion = confluenceData.version.number + 1
-        const pageTitle = confluenceData.title
+        // const newVersion = confluenceData.version.number + 1
+        // const pageTitle = confluenceData.title
         const tableContent = getTableContent(currentHtml)
         const updatedTableContent = buildProjectInfoTable({
           projectKey,
@@ -381,12 +381,18 @@ export async function syncJiraWithOpenDependabotAlerts(
         let newHtml = currentHtml.replace(tableContent, updatedTableContent)
         newHtml = newHtml.replace(moduleTableContent, updatedModuleTable)
 
-        await saveConfluenceDocument(
-          projectPageId,
-          pageTitle,
-          newVersion,
-          newHtml
-        )
+        core.debug(tableContent)
+        core.debug(updatedTableContent)
+        core.debug(moduleTableContent)
+        core.debug(updatedModuleTable)
+        core.debug(newHtml)
+
+        // await saveConfluenceDocument(
+        //   projectPageId,
+        //   pageTitle,
+        //   newVersion,
+        //   newHtml
+        // )
       }
     }
 
