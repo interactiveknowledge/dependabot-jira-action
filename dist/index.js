@@ -39,7 +39,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.syncJiraWithOpenDependabotAlerts = exports.syncJiraWithClosedDependabotPulls = exports.syncJiraWithOpenDependabotPulls = exports.createIssueAlertNumberString = exports.createIssuePullNumberString = exports.extractIssueNumber = void 0;
+exports.syncJiraWithOpenDependabotAlerts = exports.syncJiraWithClosedDependabotPulls = exports.syncJiraWithOpenDependabotPulls = exports.getTableContent = exports.createIssueAlertNumberString = exports.createIssuePullNumberString = exports.extractIssueNumber = void 0;
 const github_1 = __nccwpck_require__(5928);
 const jira_1 = __nccwpck_require__(4438);
 const core = __importStar(__nccwpck_require__(2186));
@@ -62,6 +62,16 @@ function createIssueAlertNumberString(pullNumber) {
     return `ALERT_NUMBER_${pullNumber}_ALERT_NUMBER`;
 }
 exports.createIssueAlertNumberString = createIssueAlertNumberString;
+function getTableContent(html, offset = 0) {
+    let start = offset;
+    const end = html.indexOf('</tbody>');
+    if (offset !== 0) {
+        start = html.indexOf('<tbody>') + 7;
+    }
+    const tableContent = html.substring(start, end - start);
+    return tableContent;
+}
+exports.getTableContent = getTableContent;
 function syncJiraWithOpenDependabotPulls(params) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -188,8 +198,11 @@ function syncJiraWithOpenDependabotAlerts(params) {
                 if (confluenceData) {
                     const currentHtml = confluenceData.body.editor.value;
                     const newVersion = confluenceData.version.number + 1;
-                    core.debug(JSON.stringify(newVersion));
-                    core.debug(JSON.stringify(currentHtml));
+                    const tableContent = getTableContent(currentHtml);
+                    const tableRows = tableContent.split('</tr>');
+                    core.debug(newVersion.toString());
+                    core.debug(tableContent);
+                    core.debug(JSON.stringify(tableRows));
                 }
             }
             let projectPageId = core.getInput('jiraProjectPage');

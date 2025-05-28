@@ -42,6 +42,19 @@ export function createIssueAlertNumberString(pullNumber: string): string {
   return `ALERT_NUMBER_${pullNumber}_ALERT_NUMBER`
 }
 
+export function getTableContent(html: string, offset = 0): string {
+  let start = offset
+  const end = html.indexOf('</tbody>')
+
+  if (offset !== 0) {
+    start = html.indexOf('<tbody>') + 7
+  }
+
+  const tableContent = html.substring(start, end - start)
+
+  return tableContent
+}
+
 export async function syncJiraWithOpenDependabotPulls(
   params: SyncJiraOpen
 ): Promise<string> {
@@ -233,9 +246,12 @@ export async function syncJiraWithOpenDependabotAlerts(
       if (confluenceData) {
         const currentHtml = confluenceData.body.editor.value
         const newVersion = confluenceData.version.number + 1
+        const tableContent = getTableContent(currentHtml)
+        const tableRows = tableContent.split('</tr>')
 
-        core.debug(JSON.stringify(newVersion))
-        core.debug(JSON.stringify(currentHtml))
+        core.debug(newVersion.toString())
+        core.debug(tableContent)
+        core.debug(JSON.stringify(tableRows))
       }
     }
 
