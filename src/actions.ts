@@ -252,7 +252,11 @@ export async function syncJiraWithOpenDependabotAlerts(
         let rowCount = 0
         for (const row of tableRows) {
           if (rowCount !== 0) {
-            const cells = row.replace('<tr>', '').split('</td>')
+            const cells = row
+              .replace('<tr>', '')
+              .replace('<td class="confluenceTd">', '')
+              .split('</td>')
+
             core.debug(JSON.stringify(cells))
           }
 
