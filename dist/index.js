@@ -71,7 +71,7 @@ function getTableContent(html, offset = 0) {
 }
 exports.getTableContent = getTableContent;
 function buildNewTableRow({ projectKey, projectStatus, owner, repo }) {
-    const currentDate = new Date();
+    const currentDate = new Date().toLocaleDateString();
     const statusTag = (0, jira_1.getMarkupForStatusTags)(projectStatus);
     const repoUrl = `https://github.com/${owner}/${repo}`;
     const ikProjectDomain = core.getInput('ikProjectDomain');

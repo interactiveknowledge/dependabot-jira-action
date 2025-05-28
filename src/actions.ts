@@ -68,7 +68,7 @@ export function buildNewTableRow({
   owner,
   repo
 }: BuildTableRow): string {
-  const currentDate = new Date()
+  const currentDate = new Date().toLocaleDateString()
   const statusTag = getMarkupForStatusTags(projectStatus)
   const repoUrl = `https://github.com/${owner}/${repo}`
   const ikProjectDomain = core.getInput('ikProjectDomain')
