@@ -301,15 +301,15 @@ function syncJiraWithOpenDependabotAlerts(params) {
                         owner,
                         repo
                     });
-                    // const moduleTableContent = getTableContent(currentHtml, 1)
-                    // const updatedModuleTable = buildModuleTable(jiraTickets)
-                    // let newHtml = currentHtml.replace(tableContent, updatedTableContent)
-                    // newHtml = newHtml.replace(moduleTableContent, updatedModuleTable)
+                    const moduleTableContent = getTableContent(currentHtml, 1);
+                    const updatedModuleTable = buildModuleTable(jiraTickets);
+                    let newHtml = currentHtml.replace(tableContent, updatedTableContent);
+                    newHtml = newHtml.replace(moduleTableContent, updatedModuleTable);
                     core.debug(tableContent);
                     core.debug(updatedTableContent);
-                    // core.debug(moduleTableContent)
-                    // core.debug(updatedModuleTable)
-                    // core.debug(newHtml)
+                    core.debug(moduleTableContent);
+                    core.debug(updatedModuleTable);
+                    core.debug(newHtml);
                     // await saveConfluenceDocument(
                     //   projectPageId,
                     //   pageTitle,
