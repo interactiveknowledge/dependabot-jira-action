@@ -52,7 +52,6 @@ jobs:
 
 The scripts and documentation in this project are released under the [MIT License](LICENSE)
 
-
 ## Development
 
 > Node 18.x
@@ -86,7 +85,6 @@ The action.yml defines the inputs and output for your action.
 Update the action.yml with your name, description, inputs and outputs for your action.
 
 See the [documentation](https://help.github.com/en/articles/metadata-syntax-for-github-actions)
-
 
 See the [toolkit documentation](https://github.com/actions/toolkit/blob/master/README.md#packages) for the various packages.
 
