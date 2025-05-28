@@ -43,12 +43,10 @@ export function createIssueAlertNumberString(pullNumber: string): string {
 }
 
 export function getTableContent(html: string, offset = 0): string {
-  let start = offset
+  const start = html.indexOf('<tbody>') + 7
   const end = html.indexOf('</tbody>')
 
-  if (offset !== 0) {
-    start = html.indexOf('<tbody>') + 7
-  }
+  core.debug(offset.toString())
 
   const tableContent = html.substring(start, end - start)
 
@@ -240,7 +238,7 @@ export async function syncJiraWithOpenDependabotAlerts(
       process.env.CONFLUENCE_PROJECTS_DOC_ID &&
       process.env.CONFLUENCE_PROJECTS_DOC_ID !== ''
     ) {
-      const projectDocId = '108986395'
+      const projectDocId = '2442231809'
       const confluenceData = await getConfluenceDocument({pageId: projectDocId})
 
       if (confluenceData) {

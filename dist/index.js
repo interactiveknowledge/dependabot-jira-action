@@ -63,11 +63,9 @@ function createIssueAlertNumberString(pullNumber) {
 }
 exports.createIssueAlertNumberString = createIssueAlertNumberString;
 function getTableContent(html, offset = 0) {
-    let start = offset;
+    const start = html.indexOf('<tbody>') + 7;
     const end = html.indexOf('</tbody>');
-    if (offset !== 0) {
-        start = html.indexOf('<tbody>') + 7;
-    }
+    core.debug(offset.toString());
     const tableContent = html.substring(start, end - start);
     return tableContent;
 }
@@ -193,7 +191,7 @@ function syncJiraWithOpenDependabotAlerts(params) {
             // Projects & Hosting Documents
             if (process.env.CONFLUENCE_PROJECTS_DOC_ID &&
                 process.env.CONFLUENCE_PROJECTS_DOC_ID !== '') {
-                const projectDocId = '108986395';
+                const projectDocId = '2442231809';
                 const confluenceData = yield (0, jira_1.getConfluenceDocument)({ pageId: projectDocId });
                 if (confluenceData) {
                     const currentHtml = confluenceData.body.editor.value;
