@@ -291,8 +291,8 @@ function syncJiraWithOpenDependabotAlerts(params) {
                 });
                 if (confluenceData) {
                     const currentHtml = confluenceData.body.editor.value;
-                    // const newVersion = confluenceData.version.number + 1
-                    // const pageTitle = confluenceData.title
+                    const newVersion = confluenceData.version.number + 1;
+                    const pageTitle = confluenceData.title;
                     const tableContent = getTableContent(currentHtml);
                     const updatedTableContent = buildProjectInfoTable({
                         projectKey,
@@ -300,21 +300,16 @@ function syncJiraWithOpenDependabotAlerts(params) {
                         owner,
                         repo
                     });
-                    const moduleTableContent = getTableContent(currentHtml, 1);
-                    const updatedModuleTable = buildModuleTable(jiraTickets);
-                    let newHtml = currentHtml.replace(tableContent, updatedTableContent);
-                    newHtml = newHtml.replace(moduleTableContent, updatedModuleTable);
+                    // const moduleTableContent = getTableContent(currentHtml, 1)
+                    // const updatedModuleTable = buildModuleTable(jiraTickets)
+                    const newHtml = currentHtml.replace(tableContent, updatedTableContent);
+                    // newHtml = newHtml.replace(moduleTableContent, updatedModuleTable)
                     core.debug(tableContent);
                     core.debug(updatedTableContent);
-                    core.debug(moduleTableContent);
-                    core.debug(updatedModuleTable);
-                    core.debug(newHtml);
-                    // await saveConfluenceDocument(
-                    //   projectPageId,
-                    //   pageTitle,
-                    //   newVersion,
-                    //   newHtml
-                    // )
+                    // core.debug(moduleTableContent)
+                    // core.debug(updatedModuleTable)
+                    // core.debug(newHtml)
+                    yield (0, jira_1.saveConfluenceDocument)(projectPageId, pageTitle, newVersion, newHtml);
                 }
             }
             core.setOutput('Sync jira with open dependabot pulls success', new Date().toTimeString());
