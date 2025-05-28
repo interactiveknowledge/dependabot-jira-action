@@ -170,11 +170,11 @@ function buildProjectInfoTable({ projectKey, projectStatus, owner, repo }) {
 exports.buildProjectInfoTable = buildProjectInfoTable;
 function buildModuleTable(jiraTickets) {
     let output = `<tr><th data-highlight-colour="#f0f0f0" class="confluenceTh"><p>Package</p></th><th data-highlight-colour="#f0f0f0" class="confluenceTh"><p>Vulnerable Versions</p></th><th data-highlight-colour="#f0f0f0" class="confluenceTh"><p>Notes</p></th></tr>`;
-    const statusTags = {
-        low: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Low&amp;colour=Grey" data-macro-name="status" data-macro-id="c4372164-3a17-474c-9dcd-f5452a41b3d3" data-macro-parameters="colour=Grey|title=Low" data-macro-schema-version="1"></p>`,
-        medium: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Medium&amp;colour=Yellow" data-macro-name="status" data-macro-id="c4372164-3a17-474c-9dcd-f5452a41b3d3" data-macro-parameters="colour=Yellow|title=Medum" data-macro-schema-version="1"></p>`,
-        high: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=High&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=High" data-macro-schema-version="1"></p>`,
-        critical: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Critical&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=Critical" data-macro-schema-version="1"></p>`
+    const severityTags = {
+        low: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Low Severity&amp;colour=Grey" data-macro-name="status" data-macro-id="c4372164-3a17-474c-9dcd-f5452a41b3d3" data-macro-parameters="colour=Grey|title=Low Severity" data-macro-schema-version="1"></p>`,
+        medium: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Medium Severity&amp;colour=Yellow" data-macro-name="status" data-macro-id="c4372164-3a17-474c-9dcd-f5452a41b3d3" data-macro-parameters="colour=Yellow|title=Medium Severity" data-macro-schema-version="1"></p>`,
+        high: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=High Severity&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=High Severity" data-macro-schema-version="1"></p>`,
+        critical: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Critical Severity&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=Critical Severity" data-macro-schema-version="1"></p>`
     };
     if (jiraTickets.length > 0) {
         for (const ticket of jiraTickets) {
@@ -182,16 +182,16 @@ function buildModuleTable(jiraTickets) {
             // Module
             output += `<td>${ticket.summary}`;
             if (ticket.severity === 'low') {
-                output += statusTags.low;
+                output += severityTags.low;
             }
             else if (ticket.severity === 'medium') {
-                output += statusTags.medium;
+                output += severityTags.medium;
             }
             else if (ticket.severity === 'high') {
-                output += statusTags.high;
+                output += severityTags.high;
             }
             else if (ticket.severity === 'critical') {
-                output += statusTags.critical;
+                output += severityTags.critical;
             }
             output += `</td>`;
             // Current Version
