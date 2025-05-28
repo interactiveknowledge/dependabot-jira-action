@@ -136,6 +136,137 @@ export function buildNewTableRow({
   return output
 }
 
+export async function syncJiraWithOpenDependabotAlerts(
+  params: SyncJiraOpen
+): Promise<string> {
+  try {
+    core.setOutput(
+      'Sync jira with open dependabot pulls starting',
+      new Date().toTimeString()
+    )
+    const {repo, owner, label, projectKey, issueType} = params
+    const dependabotAlerts: DependabotAlert[] = await getDependabotOpenAlerts({
+      repo,
+      owner
+    })
+    const jiraTickets = []
+    let projectStatus = 'none'
+
+    for (const alert of dependabotAlerts) {
+      const issueSummary = `Dependabot ${alert.severity.toUpperCase()} alert: ${
+        alert.summary
+      }`
+      const jiraTicketData = await createJiraIssueFromAlerts({
+        ...alert,
+        label,
+        projectKey,
+        issueSummary,
+        issueType,
+        repoName: repo,
+        repoUrl: `https://github.com/${owner}/${repo}`
+      })
+
+      projectStatus = 'security'
+
+      jiraTickets.push({
+        ...alert,
+        jiraIssue: jiraTicketData.data
+      })
+    }
+
+    // Update confluence.
+    // Projects & Hosting Documents
+    if (
+      process.env.CONFLUENCE_PROJECTS_DOC_ID &&
+      process.env.CONFLUENCE_PROJECTS_DOC_ID !== ''
+    ) {
+      const projectDocId = process.env.CONFLUENCE_PROJECTS_DOC_ID
+      const confluenceData = await getConfluenceDocument({pageId: projectDocId})
+
+      if (confluenceData) {
+        const currentHtml = confluenceData.body.editor.value
+        const newVersion = confluenceData.version.number + 1
+        const pageTitle = confluenceData.title
+        const tableContent = getTableContent(currentHtml)
+        const tableRows = tableContent.split('</tr>')
+        const newRowValue = buildNewTableRow({
+          projectKey,
+          projectStatus,
+          owner,
+          repo
+        })
+        const newTableRows = []
+        let found = false
+
+        let rowCount = 0
+        for (const row of tableRows) {
+          if (rowCount !== 0) {
+            // let isMatch = false
+            const cells = row
+              .replace('<tr>', '')
+              .replace('<td>', '')
+              .replace('<td class="confluenceTd">', '')
+              .split('</td>')
+
+            const rowProjectKey = cells[0].replace(/<[^>]*>/g, '').trim()
+
+            if (rowProjectKey === projectKey) {
+              found = true
+              newTableRows.push(newRowValue)
+            } else {
+              newTableRows.push(row)
+            }
+          } else {
+            newTableRows.push(row)
+          }
+
+          rowCount++
+        }
+
+        if (found === false) {
+          newTableRows.push(newRowValue)
+        }
+
+        const newTableContent = newTableRows.join('')
+        const newHtml = currentHtml.replace(tableContent, newTableContent)
+
+        await saveConfluenceDocument(
+          projectDocId,
+          pageTitle,
+          newVersion,
+          newHtml
+        )
+
+        core.debug(newVersion.toString())
+      }
+    }
+
+    let projectPageId = core.getInput('jiraProjectPage')
+    if (projectPageId && projectPageId !== '') {
+      projectPageId = projectPageId.replace(
+        'https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/',
+        ''
+      )
+      projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
+
+      // const confluenceData = await getConfluenceDocument({
+      //   pageId: projectPageId
+      // })
+
+      // core.debug(projectPageId)
+      // core.debug(JSON.stringify(confluenceData))
+    }
+
+    core.setOutput(
+      'Sync jira with open dependabot pulls success',
+      new Date().toTimeString()
+    )
+    return 'success'
+  } catch (e) {
+    throw e
+  }
+}
+
 export async function syncJiraWithOpenDependabotPulls(
   params: SyncJiraOpen
 ): Promise<string> {
@@ -235,137 +366,6 @@ export async function syncJiraWithClosedDependabotPulls(
     return 'success'
   } catch (e) {
     core.debug(`ERROR ${JSON.stringify(e)}`)
-    throw e
-  }
-}
-
-export async function syncJiraWithOpenDependabotAlerts(
-  params: SyncJiraOpen
-): Promise<string> {
-  try {
-    core.setOutput(
-      'Sync jira with open dependabot pulls starting',
-      new Date().toTimeString()
-    )
-    const {repo, owner, label, projectKey, issueType} = params
-    const dependabotAlerts: DependabotAlert[] = await getDependabotOpenAlerts({
-      repo,
-      owner
-    })
-    const jiraTickets = []
-    let projectStatus = 'none'
-
-    for (const alert of dependabotAlerts) {
-      const issueSummary = `Dependabot ${alert.severity.toUpperCase()} alert: ${
-        alert.summary
-      }`
-      const jiraTicketData = await createJiraIssueFromAlerts({
-        ...alert,
-        label,
-        projectKey,
-        issueSummary,
-        issueType,
-        repoName: repo,
-        repoUrl: `https://github.com/${owner}/${repo}`
-      })
-
-      projectStatus = 'security'
-
-      jiraTickets.push({
-        ...alert,
-        jiraIssue: jiraTicketData.data
-      })
-    }
-
-    // Update confluence.
-    // Projects & Hosting Documents
-    if (
-      process.env.CONFLUENCE_PROJECTS_DOC_ID &&
-      process.env.CONFLUENCE_PROJECTS_DOC_ID !== ''
-    ) {
-      const projectDocId = '2442231809'
-      const confluenceData = await getConfluenceDocument({pageId: projectDocId})
-
-      if (confluenceData) {
-        const currentHtml = confluenceData.body.editor.value
-        const newVersion = confluenceData.version.number + 1
-        const pageTitle = confluenceData.title
-        const tableContent = getTableContent(currentHtml)
-        const tableRows = tableContent.split('</tr>')
-        const newRowValue = buildNewTableRow({
-          projectKey,
-          projectStatus,
-          owner,
-          repo
-        })
-        const newTableRows = []
-        let found = false
-
-        let rowCount = 0
-        for (const row of tableRows) {
-          if (rowCount !== 0) {
-            // let isMatch = false
-            const cells = row
-              .replace('<tr>', '')
-              .replace('<td>', '')
-              .replace('<td class="confluenceTd">', '')
-              .split('</td>')
-
-            const rowProjectKey = cells[0].replace(/<[^>]*>/g, '').trim()
-
-            if (rowProjectKey === projectKey) {
-              found = true
-              newTableRows.push(newRowValue)
-            } else {
-              newTableRows.push(row)
-            }
-          } else {
-            newTableRows.push(row)
-          }
-
-          rowCount++
-        }
-
-        if (found === false) {
-          newTableRows.push(newRowValue)
-        }
-
-        const newTableContent = newTableRows.join('')
-        const newHtml = currentHtml.replace(tableContent, newTableContent)
-
-        await saveConfluenceDocument(
-          projectDocId,
-          pageTitle,
-          newVersion,
-          newHtml
-        )
-
-        core.debug(newVersion.toString())
-      }
-    }
-
-    let projectPageId = core.getInput('jiraProjectPage')
-    if (projectPageId && projectPageId !== '') {
-      projectPageId = projectPageId.replace(
-        'https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/',
-        ''
-      )
-      projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
-
-      // const confluenceData = await getConfluenceDocument({
-      //   pageId: projectPageId
-      // })
-
-      // core.debug(projectPageId)
-      // core.debug(JSON.stringify(confluenceData))
-    }
-
-    core.setOutput(
-      'Sync jira with open dependabot pulls success',
-      new Date().toTimeString()
-    )
-    return 'success'
-  } catch (e) {
     throw e
   }
 }
