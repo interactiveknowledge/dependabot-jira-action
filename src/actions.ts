@@ -246,10 +246,15 @@ export async function syncJiraWithOpenDependabotAlerts(
         const newVersion = confluenceData.version.number + 1
         const tableContent = getTableContent(currentHtml)
         const tableRows = tableContent.split('</tr>')
+        // const newTableRows = []
+        // let found = false
+
+        for (const row of tableRows) {
+          const cells = row.replace('<tr>', '')
+          core.debug(JSON.stringify(cells))
+        }
 
         core.debug(newVersion.toString())
-        core.debug(tableContent)
-        core.debug(JSON.stringify(tableRows))
       }
     }
 
