@@ -10,6 +10,7 @@ import {
   createJiraIssue,
   jiraApiSearch,
   getConfluenceDocument,
+  getMarkupForStatusTags,
   createJiraIssueFromAlerts
 } from './jira'
 import * as core from '@actions/core'
@@ -22,6 +23,13 @@ export interface SyncJiraOpen {
   issueType: string
   transitionDoneName?: string
   closeIssueOnMerge?: string
+}
+
+export interface BuildTableRow {
+  repo: string
+  owner: string
+  projectKey: string
+  projectStatus: string
 }
 
 export function extractIssueNumber(description: string): string {
@@ -51,6 +59,80 @@ export function getTableContent(html: string, offset = 0): string {
   const tableContent = html.substring(start, end - start)
 
   return tableContent
+}
+
+export function buildNewTableRow({
+  projectKey,
+  projectStatus,
+  owner,
+  repo
+}: BuildTableRow): string {
+  const currentDate = new Date()
+  const statusTag = getMarkupForStatusTags(projectStatus)
+  const repoUrl = `https://github.com/${owner}/${repo}`
+  const ikProjectDomain = core.getInput('ikProjectDomain')
+  const jiraProjectPage = core.getInput('jiraProjectPage')
+  const ikTeamworkProject = core.getInput('ikTeamworkProject')
+  const frameworksInfo = core.getInput('frameworksInfo')
+  const databaseInfo = core.getInput('databaseInfo')
+  const serverInfo = core.getInput('serverInfo')
+  // const additionalLinks = core.getInput('additionalLinks')
+
+  let output = '<tr>'
+  // Project Key
+  output += `<td class="confluenceTd"><p>${projectKey}</p></td>`
+  // Site Urls
+  output += `<td class="confluenceTd">`
+
+  if (ikProjectDomain && ikProjectDomain !== '') {
+    output += `<p>${ikProjectDomain}</p>`
+  }
+
+  output += `<ul>`
+
+  if (ikProjectDomain && ikProjectDomain !== '') {
+    output += `<li><a href="https://${ikProjectDomain} target="_blank">live site</a></li>`
+  }
+
+  output += `<li><a href="https://interactiveknowledge.atlassian.net/browse/${projectKey} target="_blank">jira project</a></li>`
+
+  if (jiraProjectPage && jiraProjectPage !== '') {
+    output += `<li><a href="${jiraProjectPage} target="_blank">confluence notes</a></li>`
+  }
+
+  if (ikTeamworkProject && ikTeamworkProject !== '') {
+    output += `<li><a href="${ikTeamworkProject} target="_blank">teamwork project</a></li>`
+  }
+
+  // if (additionalLinks && additionalLinks !== '') {
+  // }
+
+  output += `<li><a href="${repoUrl} target="_blank">github project</a></li>`
+
+  output += `</ul>`
+
+  output += `</td>`
+  // Status
+  output += `<td class="confluenceTd"><p>${statusTag}</p></td>`
+  // Frameworks
+  output += `<td class="confluenceTd"><p>${
+    frameworksInfo !== '' ? frameworksInfo : 'N/A'
+  }</p></td>`
+  // PHP Version
+  output += `<td class="confluenceTd"><p>N/A</p></td>`
+  // Database Information
+  output += `<td class="confluenceTd"><p>${
+    databaseInfo !== '' ? databaseInfo : 'N/A'
+  }</p></td>`
+  // Server Information
+  output += `<td class="confluenceTd"><p>${
+    serverInfo !== '' ? serverInfo : 'N/A'
+  }</p></td>`
+  // Last Checked
+  output += `<td class="confluenceTd"><p>${currentDate}<img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=automatically&amp;colour=Purple" data-macro-name="status" data-macro-id="9e4125f0-89a1-4143-a6cd-babe9f33f38c" data-macro-parameters="colour=Purple|title=automatically via github actions" data-macro-schema-version="1"></p></td>`
+  output += '</tr>'
+
+  return output
 }
 
 export async function syncJiraWithOpenDependabotPulls(
@@ -230,7 +312,6 @@ export async function syncJiraWithOpenDependabotAlerts(
 
     core.debug(projectStatus)
     core.debug(JSON.stringify(jiraTickets))
-    // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
 
     // Update confluence.
     // Projects & Hosting Documents
@@ -246,8 +327,14 @@ export async function syncJiraWithOpenDependabotAlerts(
         const newVersion = confluenceData.version.number + 1
         const tableContent = getTableContent(currentHtml)
         const tableRows = tableContent.split('</tr>')
-        // const newTableRows = []
-        // let found = false
+        const newRowValue = buildNewTableRow({
+          projectKey,
+          projectStatus,
+          owner,
+          repo
+        })
+        const newTableRows = []
+        let found = false
 
         let rowCount = 0
         for (const row of tableRows) {
@@ -261,14 +348,21 @@ export async function syncJiraWithOpenDependabotAlerts(
 
             const rowProjectKey = cells[0].replace(/<[^>]*>/g, '').trim()
 
-            // if (rowProjectKey === projectKey) {
-            //   isMatch = true
-            // }
-
-            core.debug(rowProjectKey)
+            if (rowProjectKey === projectKey) {
+              found = true
+              newTableRows.push(newRowValue)
+            } else {
+              newTableRows.push(row)
+            }
+          } else {
+            newTableRows.push(row)
           }
 
           rowCount++
+        }
+
+        if (found === false) {
+          newTableRows.push(newRowValue)
         }
 
         core.debug(newVersion.toString())

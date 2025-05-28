@@ -36,7 +36,19 @@ inputs:
     description: 'The dev url'
   ikTeamworkProject:
     required: false
-    description: 'The teamworl prject Url'
+    description: 'The teamwork prject Url'
+  frameworksInfo:
+    required: false
+    description: 'The teamwork prject Url'
+  databaseInfo:
+    required: false
+    description: 'The teamwork prject Url'
+  serverInfo:
+    required: false
+    description: 'The teamwork prject Url'
+  additionalLinks:
+    required: false
+    description: 'The teamwork prject Url'
 runs:
   using: 'node16'
   main: 'dist/index.js'
