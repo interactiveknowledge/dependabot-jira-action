@@ -62,13 +62,14 @@ export function createIssueAlertNumberString(pullNumber: string): string {
 
 export function getTableContent(html: string, offset = 0): string {
   let start = html.indexOf('<tbody>') + 7
-  const end = html.indexOf('</tbody>')
+  let end = html.indexOf('</tbody>')
 
   if (offset !== 0) {
     start = html.indexOf('<tbody>', start) + 7
+    end = html.indexOf('</tbody>', start)
   }
 
-  const tableContent = html.substring(start, end - start)
+  const tableContent = html.substring(start, end)
 
   return tableContent
 }
@@ -366,36 +367,33 @@ export async function syncJiraWithOpenDependabotAlerts(
 
       if (confluenceData) {
         const currentHtml = confluenceData.body.editor.value
-        const newVersion = confluenceData.version.number + 1
-        const pageTitle = confluenceData.title
-        // const tableContent = getTableContent(currentHtml)
-        // const updatedTableContent = buildProjectInfoTable({
-        //   projectKey,
-        //   projectStatus,
-        //   owner,
-        //   repo
-        // })
-        const moduleTableContent = getTableContent(currentHtml, 1)
-        const updatedModuleTable = buildModuleTable(jiraTickets)
+        // const newVersion = confluenceData.version.number + 1
+        // const pageTitle = confluenceData.title
+        const tableContent = getTableContent(currentHtml)
+        const updatedTableContent = buildProjectInfoTable({
+          projectKey,
+          projectStatus,
+          owner,
+          repo
+        })
+        // const moduleTableContent = getTableContent(currentHtml, 1)
+        // const updatedModuleTable = buildModuleTable(jiraTickets)
 
-        // const newHtml = currentHtml.replace(tableContent, updatedTableContent)
-        const newHtml = currentHtml.replace(
-          moduleTableContent,
-          updatedModuleTable
-        )
+        // let newHtml = currentHtml.replace(tableContent, updatedTableContent)
+        // newHtml = newHtml.replace(moduleTableContent, updatedModuleTable)
 
-        // core.debug(tableContent)
-        // core.debug(updatedTableContent)
-        core.debug(moduleTableContent)
-        core.debug(updatedModuleTable)
+        core.debug(tableContent)
+        core.debug(updatedTableContent)
+        // core.debug(moduleTableContent)
+        // core.debug(updatedModuleTable)
         // core.debug(newHtml)
 
-        await saveConfluenceDocument(
-          projectPageId,
-          pageTitle,
-          newVersion,
-          newHtml
-        )
+        // await saveConfluenceDocument(
+        //   projectPageId,
+        //   pageTitle,
+        //   newVersion,
+        //   newHtml
+        // )
       }
     }
 

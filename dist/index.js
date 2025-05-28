@@ -64,11 +64,12 @@ function createIssueAlertNumberString(pullNumber) {
 exports.createIssueAlertNumberString = createIssueAlertNumberString;
 function getTableContent(html, offset = 0) {
     let start = html.indexOf('<tbody>') + 7;
-    const end = html.indexOf('</tbody>');
+    let end = html.indexOf('</tbody>');
     if (offset !== 0) {
         start = html.indexOf('<tbody>', start) + 7;
+        end = html.indexOf('</tbody>', start);
     }
-    const tableContent = html.substring(start, end - start);
+    const tableContent = html.substring(start, end);
     return tableContent;
 }
 exports.getTableContent = getTableContent;
@@ -291,25 +292,30 @@ function syncJiraWithOpenDependabotAlerts(params) {
                 });
                 if (confluenceData) {
                     const currentHtml = confluenceData.body.editor.value;
-                    const newVersion = confluenceData.version.number + 1;
-                    const pageTitle = confluenceData.title;
-                    // const tableContent = getTableContent(currentHtml)
-                    // const updatedTableContent = buildProjectInfoTable({
-                    //   projectKey,
-                    //   projectStatus,
-                    //   owner,
-                    //   repo
-                    // })
-                    const moduleTableContent = getTableContent(currentHtml, 1);
-                    const updatedModuleTable = buildModuleTable(jiraTickets);
-                    // const newHtml = currentHtml.replace(tableContent, updatedTableContent)
-                    const newHtml = currentHtml.replace(moduleTableContent, updatedModuleTable);
-                    // core.debug(tableContent)
-                    // core.debug(updatedTableContent)
-                    core.debug(moduleTableContent);
-                    core.debug(updatedModuleTable);
+                    // const newVersion = confluenceData.version.number + 1
+                    // const pageTitle = confluenceData.title
+                    const tableContent = getTableContent(currentHtml);
+                    const updatedTableContent = buildProjectInfoTable({
+                        projectKey,
+                        projectStatus,
+                        owner,
+                        repo
+                    });
+                    // const moduleTableContent = getTableContent(currentHtml, 1)
+                    // const updatedModuleTable = buildModuleTable(jiraTickets)
+                    // let newHtml = currentHtml.replace(tableContent, updatedTableContent)
+                    // newHtml = newHtml.replace(moduleTableContent, updatedModuleTable)
+                    core.debug(tableContent);
+                    core.debug(updatedTableContent);
+                    // core.debug(moduleTableContent)
+                    // core.debug(updatedModuleTable)
                     // core.debug(newHtml)
-                    yield (0, jira_1.saveConfluenceDocument)(projectPageId, pageTitle, newVersion, newHtml);
+                    // await saveConfluenceDocument(
+                    //   projectPageId,
+                    //   pageTitle,
+                    //   newVersion,
+                    //   newHtml
+                    // )
                 }
             }
             core.setOutput('Sync jira with open dependabot pulls success', new Date().toTimeString());

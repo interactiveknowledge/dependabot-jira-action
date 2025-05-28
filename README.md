@@ -40,8 +40,6 @@ jobs:
           frameworksInfo: 'React'
           databaseInfo: 'N/A'
           serverInfo: 'Heroku'
-          # delminited by | and use [text](url). Ex:
-          additionalLinks: '[heroku pipeline](https://dashboard.heroku.com/pipelines/c84d7400-9fa6-42b3-8736-57064b4dfff8)|[battlefields backend]:(https://battlefields.org)'
         env:
           JIRA_SUBDOMAIN: ${{ secrets.JIRA_SUBDOMAIN }}
           JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
