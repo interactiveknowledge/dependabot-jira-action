@@ -103,7 +103,9 @@ function buildNewTableRow({ projectKey, projectStatus, owner, repo }) {
     output += `</ul>`;
     output += `</td>`;
     // Status
-    output += `<td class="confluenceTd"><p>${statusTag}</p></td>`;
+    output += `<td class="confluenceTd">${statusTag}${projectStatus !== 'none'
+        ? `<p><a href="${jiraProjectPage} target="_blank">see details</a></p>`
+        : ''}</td>`;
     // Frameworks
     output += `<td class="confluenceTd"><p>${frameworksInfo !== '' ? frameworksInfo : 'N/A'}</p></td>`;
     // PHP Version
