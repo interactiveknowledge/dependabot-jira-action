@@ -293,21 +293,21 @@ function syncJiraWithOpenDependabotAlerts(params) {
                     const currentHtml = confluenceData.body.editor.value;
                     const newVersion = confluenceData.version.number + 1;
                     const pageTitle = confluenceData.title;
-                    const tableContent = getTableContent(currentHtml);
-                    const updatedTableContent = buildProjectInfoTable({
-                        projectKey,
-                        projectStatus,
-                        owner,
-                        repo
-                    });
-                    // const moduleTableContent = getTableContent(currentHtml, 1)
-                    // const updatedModuleTable = buildModuleTable(jiraTickets)
-                    const newHtml = currentHtml.replace(tableContent, updatedTableContent);
-                    // newHtml = newHtml.replace(moduleTableContent, updatedModuleTable)
-                    core.debug(tableContent);
-                    core.debug(updatedTableContent);
-                    // core.debug(moduleTableContent)
-                    // core.debug(updatedModuleTable)
+                    // const tableContent = getTableContent(currentHtml)
+                    // const updatedTableContent = buildProjectInfoTable({
+                    //   projectKey,
+                    //   projectStatus,
+                    //   owner,
+                    //   repo
+                    // })
+                    const moduleTableContent = getTableContent(currentHtml, 1);
+                    const updatedModuleTable = buildModuleTable(jiraTickets);
+                    // const newHtml = currentHtml.replace(tableContent, updatedTableContent)
+                    const newHtml = currentHtml.replace(moduleTableContent, updatedModuleTable);
+                    // core.debug(tableContent)
+                    // core.debug(updatedTableContent)
+                    core.debug(moduleTableContent);
+                    core.debug(updatedModuleTable);
                     // core.debug(newHtml)
                     yield (0, jira_1.saveConfluenceDocument)(projectPageId, pageTitle, newVersion, newHtml);
                 }
