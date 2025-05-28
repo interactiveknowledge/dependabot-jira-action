@@ -33,6 +33,12 @@ export interface BuildTableRow {
   projectStatus: string
 }
 
+export interface JiraAlertIssue {
+  summary: string
+  severity: string
+  vulnerable_version_range: string
+}
+
 export function extractIssueNumber(description: string): string {
   const issueNumberRegex = /PULL_NUMBER_(.*)_PULL_NUMBER/g
   const parts = issueNumberRegex.exec(description)
@@ -52,10 +58,12 @@ export function createIssueAlertNumberString(pullNumber: string): string {
 }
 
 export function getTableContent(html: string, offset = 0): string {
-  const start = html.indexOf('<tbody>') + 7
+  let start = html.indexOf('<tbody>') + 7
   const end = html.indexOf('</tbody>')
 
-  core.debug(offset.toString())
+  if (offset !== 0) {
+    start = html.indexOf('<tbody>', start) + 7
+  }
 
   const tableContent = html.substring(start, end - start)
 
@@ -91,20 +99,20 @@ export function buildNewTableRow({
   output += `<ul>`
 
   if (ikProjectDomain && ikProjectDomain !== '') {
-    output += `<li><a href="https://${ikProjectDomain} target="_blank">live site</a></li>`
+    output += `<li><a href="https://${ikProjectDomain}" target="_blank">live site</a></li>`
   }
 
-  output += `<li><a href="https://interactiveknowledge.atlassian.net/browse/${projectKey} target="_blank">jira project</a></li>`
+  output += `<li><a href="https://interactiveknowledge.atlassian.net/browse/${projectKey}" target="_blank">jira project</a></li>`
 
   if (jiraProjectPage && jiraProjectPage !== '') {
-    output += `<li><a href="${jiraProjectPage} target="_blank">confluence notes</a></li>`
+    output += `<li><a href="${jiraProjectPage}" target="_blank">confluence notes</a></li>`
   }
 
   if (ikTeamworkProject && ikTeamworkProject !== '') {
-    output += `<li><a href="${ikTeamworkProject} target="_blank">teamwork project</a></li>`
+    output += `<li><a href="${ikTeamworkProject}" target="_blank">teamwork project</a></li>`
   }
 
-  output += `<li><a href="${repoUrl} target="_blank">github project</a></li>`
+  output += `<li><a href="${repoUrl}" target="_blank">github project</a></li>`
 
   output += `</ul>`
 
@@ -112,7 +120,7 @@ export function buildNewTableRow({
   // Status
   output += `<td class="confluenceTd">${statusTag}${
     projectStatus !== 'none'
-      ? `<p><a href="${jiraProjectPage} target="_blank">see details</a></p>`
+      ? `<p><a href="${jiraProjectPage}" target="_blank">see details</a></p>`
       : ''
   }</td>`
   // Frameworks
@@ -132,6 +140,102 @@ export function buildNewTableRow({
   // Last Checked
   output += `<td class="confluenceTd"><p>${currentDate}<img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=automatically&amp;colour=Purple" data-macro-name="status" data-macro-id="9e4125f0-89a1-4143-a6cd-babe9f33f38c" data-macro-parameters="colour=Purple|title=automatically via github actions" data-macro-schema-version="1"></p></td>`
   output += '</tr>'
+
+  return output
+}
+
+export function buildProjectInfoTable({
+  projectKey,
+  projectStatus,
+  owner,
+  repo
+}: BuildTableRow): string {
+  const currentDate = new Date().toLocaleDateString()
+  const statusTag = getMarkupForStatusTags(projectStatus)
+  const repoUrl = `https://github.com/${owner}/${repo}`
+  const ikProjectDomain = core.getInput('ikProjectDomain')
+  const ikTeamworkProject = core.getInput('ikTeamworkProject')
+  const frameworksInfo = core.getInput('frameworksInfo')
+  const databaseInfo = core.getInput('databaseInfo')
+  const serverInfo = core.getInput('serverInfo')
+  const ikDevSite = core.getInput('ikDevSite')
+  // const additionalLinks = core.getInput('additionalLinks')
+
+  // Last Updated
+  let output = `<tr><th data-highlight-colour="#C0B6F2" class="confluenceTh" colspan="2"><strong>Last Updated: ${currentDate}</strong></th></tr>`
+
+  // Project Management
+  output += `<tr><th data-highlight-colour="#FFF0B3" class="confluenceTh" colspan="2"><strong>Project Management</strong></th></tr>`
+  // Jira Project
+  output += `<tr><th>Jira Project</th><td><a href="https://interactiveknowledge.atlassian.net/browse/${projectKey}" target="_blank">Jira Project</a></td></tr>`
+  // Teamwork Project
+  if (ikTeamworkProject && ikTeamworkProject !== '') {
+    output += `<tr><th>Teamwork Project</th><td><a href="${ikTeamworkProject}" target="_blank">Teamwork Project</a></td></tr>`
+  }
+
+  // Developer Info
+  output += `<tr><th data-highlight-colour="#ABF5D1" class="confluenceTh" colspan="2"><strong>Developer Information</strong></th></tr>`
+  // Live Site
+  output += `<tr><th>Primary Domain/Live Site</th><td><a href="https://${ikProjectDomain}" target="_blank">${ikProjectDomain}</a></td></tr>`
+  // Status
+  output += `<tr><th>Site Status</th><td>${statusTag}</td></tr>`
+  // Github Repo
+  output += `<tr><th>Github Repository</th><td><a href="${repoUrl}" target="_blank">${owner}/${repo}</a></td></tr>`
+
+  // Dev Site
+  if (ikDevSite && ikDevSite !== '') {
+    output += `<tr><th>Dev Site</th><td><a href="${ikDevSite}" target="_blank">${ikDevSite}</a></td></tr>`
+  }
+  // Server info
+  if (
+    (serverInfo && serverInfo !== '') ||
+    (frameworksInfo && frameworksInfo !== '')
+  ) {
+    output += `<tr><th>Server Information</th><td>${serverInfo} ${frameworksInfo}</td></tr>`
+  }
+  // DatabaseInfo
+  if (databaseInfo && databaseInfo !== '') {
+    output += `<tr><th>Database Information</th><td>${databaseInfo}</td></tr>`
+  }
+
+  return output
+}
+
+export function buildModuleTable(jiraTickets: JiraAlertIssue[]): string {
+  let output = ``
+  const statusTags = {
+    low: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Low&amp;colour=Grey" data-macro-name="status" data-macro-id="c4372164-3a17-474c-9dcd-f5452a41b3d3" data-macro-parameters="colour=Grey|title=Low" data-macro-schema-version="1"></p>`,
+    medium: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Medium&amp;colour=Yellow" data-macro-name="status" data-macro-id="c4372164-3a17-474c-9dcd-f5452a41b3d3" data-macro-parameters="colour=Yellow|title=Medum" data-macro-schema-version="1"></p>`,
+    high: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=High&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=High" data-macro-schema-version="1"></p>`,
+    critical: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Critical&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=Critical" data-macro-schema-version="1"></p>`
+  }
+
+  if (jiraTickets.length > 0) {
+    for (const ticket of jiraTickets) {
+      output += `<tr>`
+      // Module
+      output += `<td>${ticket.summary}`
+
+      if (ticket.severity === 'low') {
+        output += statusTags.low
+      } else if (ticket.severity === 'medium') {
+        output += statusTags.medium
+      } else if (ticket.severity === 'high') {
+        output += statusTags.high
+      } else if (ticket.severity === 'critical') {
+        output += statusTags.critical
+      }
+
+      output += `</td>`
+      // Current Version
+      output += `<td>Vulnerable Versions: ${ticket.vulnerable_version_range}</td>`
+      // Recommended Version
+      output += `<td></td>`
+      output += `</tr>`
+    }
+  } else {
+    output += `<tr><td colspan="4">There are no security updates for this project.</td></tr>`
+  }
 
   return output
 }
@@ -236,11 +340,10 @@ export async function syncJiraWithOpenDependabotAlerts(
           newVersion,
           newHtml
         )
-
-        core.debug(newVersion.toString())
       }
     }
 
+    // Individual Confluence Project Page
     let projectPageId = core.getInput('jiraProjectPage')
     if (projectPageId && projectPageId !== '') {
       projectPageId = projectPageId.replace(
@@ -249,12 +352,32 @@ export async function syncJiraWithOpenDependabotAlerts(
       )
       projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
 
-      // const confluenceData = await getConfluenceDocument({
-      //   pageId: projectPageId
-      // })
+      const confluenceData = await getConfluenceDocument({pageId: projectDocId})
 
-      // core.debug(projectPageId)
-      // core.debug(JSON.stringify(confluenceData))
+      if (confluenceData) {
+        const currentHtml = confluenceData.body.editor.value
+        const newVersion = confluenceData.version.number + 1
+        const pageTitle = confluenceData.title
+        const tableContent = getTableContent(currentHtml)
+        const updatedTableContent = buildProjectInfoTable({
+          projectKey,
+          projectStatus,
+          owner,
+          repo
+        })
+        const moduleTableContent = getTableContent(currentHtml, 1)
+        const updatedModuleTable = buildModuleTable(jiraTickets)
+
+        const newHtml = currentHtml.replace(tableContent, updatedTableContent)
+        newHtml = newHtml.replace(moduleTableContent, updatedModuleTable)
+
+        await saveConfluenceDocument(
+          projectPageId,
+          pageTitle,
+          newVersion,
+          newHtml
+        )
+      }
     }
 
     core.setOutput(
