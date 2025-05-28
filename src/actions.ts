@@ -252,13 +252,20 @@ export async function syncJiraWithOpenDependabotAlerts(
         let rowCount = 0
         for (const row of tableRows) {
           if (rowCount !== 0) {
+            // let isMatch = false
             const cells = row
               .replace('<tr>', '')
               .replace('<td>', '')
               .replace('<td class="confluenceTd">', '')
               .split('</td>')
 
-            core.debug(cells[0])
+            const rowProjectKey = cells[0].replace(/<[^>]*>/g, '').trim()
+
+            // if (rowProjectKey === projectKey) {
+            //   isMatch = true
+            // }
+
+            core.debug(rowProjectKey)
           }
 
           rowCount++
