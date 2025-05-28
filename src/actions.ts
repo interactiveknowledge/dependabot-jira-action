@@ -249,9 +249,14 @@ export async function syncJiraWithOpenDependabotAlerts(
         // const newTableRows = []
         // let found = false
 
+        let rowCount = 0
         for (const row of tableRows) {
-          const cells = row.replace('<tr>', '')
-          core.debug(JSON.stringify(cells))
+          if (rowCount !== 0) {
+            const cells = row.replace('<tr>', '').split('</td>')
+            core.debug(JSON.stringify(cells))
+          }
+
+          rowCount++
         }
 
         core.debug(newVersion.toString())
