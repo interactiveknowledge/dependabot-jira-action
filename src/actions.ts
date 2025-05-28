@@ -11,7 +11,8 @@ import {
   jiraApiSearch,
   getConfluenceDocument,
   getMarkupForStatusTags,
-  createJiraIssueFromAlerts
+  createJiraIssueFromAlerts,
+  saveConfluenceDocument
 } from './jira'
 import * as core from '@actions/core'
 
@@ -76,7 +77,6 @@ export function buildNewTableRow({
   const frameworksInfo = core.getInput('frameworksInfo')
   const databaseInfo = core.getInput('databaseInfo')
   const serverInfo = core.getInput('serverInfo')
-  // const additionalLinks = core.getInput('additionalLinks')
 
   let output = '<tr>'
   // Project Key
@@ -103,9 +103,6 @@ export function buildNewTableRow({
   if (ikTeamworkProject && ikTeamworkProject !== '') {
     output += `<li><a href="${ikTeamworkProject} target="_blank">teamwork project</a></li>`
   }
-
-  // if (additionalLinks && additionalLinks !== '') {
-  // }
 
   output += `<li><a href="${repoUrl} target="_blank">github project</a></li>`
 
@@ -149,7 +146,6 @@ export async function syncJiraWithOpenDependabotPulls(
       owner
     })
     const jiraTickets = []
-    let projectStatus = 'none'
 
     for (const pull of dependabotPulls) {
       const jiraTicketData = await createJiraIssue({
@@ -159,10 +155,6 @@ export async function syncJiraWithOpenDependabotPulls(
         ...pull
       })
 
-      if (pull.alerts && pull.alerts.length > 0) {
-        projectStatus = 'security'
-      }
-
       jiraTickets.push({
         jiraTicketData,
         label,
@@ -170,35 +162,6 @@ export async function syncJiraWithOpenDependabotPulls(
         issueType,
         ...pull
       })
-    }
-
-    // Update confluence.
-    // Projects & Hosting Documents
-    if (
-      process.env.CONFLUENCE_PROJECTS_DOC_ID &&
-      process.env.CONFLUENCE_PROJECTS_DOC_ID !== ''
-    ) {
-      const projectDocId = process.env.CONFLUENCE_PROJECTS_DOC_ID
-      const confluenceData = getConfluenceDocument({pageId: projectDocId})
-      // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
-
-      core.debug(projectStatus)
-      core.debug(JSON.stringify(confluenceData))
-    }
-
-    let projectPageId = core.getInput('jiraProjectPage')
-    if (projectPageId && projectPageId !== '') {
-      projectPageId = projectPageId.replace(
-        'https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/',
-        ''
-      )
-      projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
-
-      const confluenceData = getConfluenceDocument({pageId: projectPageId})
-      // const statusTagMarkup = getMarkupForStatusTags(projectStatus)
-
-      core.debug(projectPageId)
-      core.debug(JSON.stringify(confluenceData))
     }
 
     core.setOutput(
@@ -310,9 +273,6 @@ export async function syncJiraWithOpenDependabotAlerts(
       })
     }
 
-    core.debug(projectStatus)
-    core.debug(JSON.stringify(jiraTickets))
-
     // Update confluence.
     // Projects & Hosting Documents
     if (
@@ -325,6 +285,7 @@ export async function syncJiraWithOpenDependabotAlerts(
       if (confluenceData) {
         const currentHtml = confluenceData.body.editor.value
         const newVersion = confluenceData.version.number + 1
+        const pageTitle = confluenceData.title
         const tableContent = getTableContent(currentHtml)
         const tableRows = tableContent.split('</tr>')
         const newRowValue = buildNewTableRow({
@@ -364,6 +325,16 @@ export async function syncJiraWithOpenDependabotAlerts(
         if (found === false) {
           newTableRows.push(newRowValue)
         }
+
+        const newTableContent = newTableRows.join('')
+        const newHtml = currentHtml.replace(tableContent, newTableContent)
+
+        await saveConfluenceDocument(
+          projectDocId,
+          pageTitle,
+          newVersion,
+          newHtml
+        )
 
         core.debug(newVersion.toString())
       }

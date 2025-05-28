@@ -20,6 +20,7 @@ interface ApiDocumentResponse {
       value: string
     }
   }
+  title: string
   version: {
     number: number
   }
@@ -94,6 +95,52 @@ export function getConfluenceDocumentApiUrl(pageId: string): string {
   const subdomain = process.env.JIRA_SUBDOMAIN
   const url = `https://${subdomain}.atlassian.net/wiki/rest/api/content/${pageId}?expand=body.editor,version`
   return url
+}
+
+export async function saveConfluenceDocument(
+  pageId: string,
+  pageTitle: string,
+  newVersion: number,
+  newHtml: string
+): Promise<ApiRequestResponse> {
+  try {
+    const subdomain = process.env.JIRA_SUBDOMAIN
+    const url = `https://${subdomain}.atlassian.net/wiki/rest/api/content/${pageId}`
+    const body = {
+      id: pageId,
+      title: pageTitle,
+      version: {number: newVersion},
+      space: {
+        key: 'kb'
+      },
+      type: 'page',
+      body: {
+        editor: {
+          value: newHtml,
+          representation: 'editor'
+        }
+      }
+    }
+
+    const response: Response = await fetch(url, {
+      method: 'PUT',
+      headers: getJiraAuthorizedHeader(),
+      body: JSON.stringify(body)
+    })
+
+    if (response.status === 200) {
+      const responseData = await response.json()
+      return {data: responseData}
+    } else {
+      const error = await response.json()
+      const errors = Object.values(error.errors)
+      const message = errors.join(',')
+      throw Error(message)
+    }
+  } catch (e) {
+    core.error('Error saving confluence doc')
+    throw new Error('Error saving confluence doc')
+  }
 }
 
 export function getMarkupForStatusTags(projectStatus: string): string {
