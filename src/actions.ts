@@ -37,6 +37,9 @@ export interface JiraAlertIssue {
   summary: string
   severity: string
   vulnerable_version_range: string
+  jiraIssue: {
+    key?: string
+  }
 }
 
 export function extractIssueNumber(description: string): string {
@@ -202,7 +205,7 @@ export function buildProjectInfoTable({
 }
 
 export function buildModuleTable(jiraTickets: JiraAlertIssue[]): string {
-  let output = ``
+  let output = `<tr><th data-highlight-colour="#f0f0f0" class="confluenceTh"><p>Package</p></th><th data-highlight-colour="#f0f0f0" class="confluenceTh"><p>Vulnerable Versions</p></th><th data-highlight-colour="#f0f0f0" class="confluenceTh"><p>Notes</p></th></tr>`
   const statusTags = {
     low: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Low&amp;colour=Grey" data-macro-name="status" data-macro-id="c4372164-3a17-474c-9dcd-f5452a41b3d3" data-macro-parameters="colour=Grey|title=Low" data-macro-schema-version="1"></p>`,
     medium: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Medium&amp;colour=Yellow" data-macro-name="status" data-macro-id="c4372164-3a17-474c-9dcd-f5452a41b3d3" data-macro-parameters="colour=Yellow|title=Medum" data-macro-schema-version="1"></p>`,
@@ -228,9 +231,14 @@ export function buildModuleTable(jiraTickets: JiraAlertIssue[]): string {
 
       output += `</td>`
       // Current Version
-      output += `<td>Vulnerable Versions: ${ticket.vulnerable_version_range}</td>`
-      // Recommended Version
-      output += `<td></td>`
+      output += `<td>${ticket.vulnerable_version_range}</td>`
+      // Notes
+      output += `<td>`
+      if (ticket.jiraIssue.key) {
+        output += `<p><img class="editor-inline-macro" src="/wiki/plugins/servlet/confluence/placeholder/macro?definition=e2ppcmE6a2V5PUFMVC0xNjV9&amp;locale=en_GB" data-macro-name="jira" data-macro-id="92057b3a-97fd-4687-84c0-792fca616804" data-macro-parameters="key=${ticket.jiraIssue.key}|server=System Jira|serverId=e03ba625-19c3-3c97-8652-c394cc622739" data-macro-schema-version="1"></p>`
+      }
+      output += `</td>`
+
       output += `</tr>`
     }
   } else {
@@ -352,7 +360,9 @@ export async function syncJiraWithOpenDependabotAlerts(
       )
       projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
 
-      const confluenceData = await getConfluenceDocument({pageId: projectDocId})
+      const confluenceData = await getConfluenceDocument({
+        pageId: projectPageId
+      })
 
       if (confluenceData) {
         const currentHtml = confluenceData.body.editor.value
@@ -368,7 +378,7 @@ export async function syncJiraWithOpenDependabotAlerts(
         const moduleTableContent = getTableContent(currentHtml, 1)
         const updatedModuleTable = buildModuleTable(jiraTickets)
 
-        const newHtml = currentHtml.replace(tableContent, updatedTableContent)
+        let newHtml = currentHtml.replace(tableContent, updatedTableContent)
         newHtml = newHtml.replace(moduleTableContent, updatedModuleTable)
 
         await saveConfluenceDocument(
