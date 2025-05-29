@@ -219,7 +219,7 @@ export function buildModuleTable(jiraTickets: JiraAlertIssue[]): string {
     for (const ticket of jiraTickets) {
       output += `<tr>`
       // Module
-      output += `<td>${ticket.summary}`
+      output += `<td><p><strong>${ticket.package}</strong></p><p>${ticket.summary}</p>`
 
       if (ticket.severity === 'low') {
         output += severityTags.low
