@@ -267,9 +267,9 @@ export async function syncJiraWithOpenDependabotAlerts(
     let projectStatus = 'none'
 
     for (const alert of dependabotAlerts) {
-      const issueSummary = `Security Update: ${alert.severity.toUpperCase()} Severity for ${
+      const issueSummary = `Dependabot Security Update: ${alert.severity.toUpperCase()} Severity for ${
         alert.package
-      } (via dependabot)`
+      }`
       const jiraTicketData = await createJiraIssueFromAlerts({
         ...alert,
         label,

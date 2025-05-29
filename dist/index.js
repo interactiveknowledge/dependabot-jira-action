@@ -223,7 +223,7 @@ function syncJiraWithOpenDependabotAlerts(params) {
             const jiraTickets = [];
             let projectStatus = 'none';
             for (const alert of dependabotAlerts) {
-                const issueSummary = `Security Update: ${alert.severity.toUpperCase()} Severity for ${alert.package} (via dependabot)`;
+                const issueSummary = `Dependabot Security Update: ${alert.severity.toUpperCase()} Severity for ${alert.package}`;
                 const jiraTicketData = yield (0, jira_1.createJiraIssueFromAlerts)(Object.assign(Object.assign({}, alert), { label,
                     projectKey,
                     issueSummary,
