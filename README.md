@@ -10,6 +10,9 @@ See [action.yml](action.yml)
 ```yaml
 name: Update JIRA with dependabot issues
 on:
+  # Run on schedule
+  schedule: 
+    - cron: '0 */12 * * *'
   # Run after Dependabot Updates workflow.
   workflow_run:
     workflows: [Dependabot Updates]

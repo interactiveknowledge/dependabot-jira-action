@@ -286,7 +286,10 @@ function syncJiraWithOpenDependabotAlerts(params) {
             let projectPageId = core.getInput('jiraProjectPage');
             if (projectPageId && projectPageId !== '') {
                 projectPageId = projectPageId.replace('https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/', '');
-                projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'));
+                if (projectPageId.includes('/')) {
+                    projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'));
+                }
+                core.debug(projectPageId);
                 const confluenceData = yield (0, jira_1.getConfluenceDocument)({
                     pageId: projectPageId
                 });

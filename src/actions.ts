@@ -359,7 +359,12 @@ export async function syncJiraWithOpenDependabotAlerts(
         'https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/',
         ''
       )
-      projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
+
+      if (projectPageId.includes('/')) {
+        projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
+      }
+
+      core.debug(projectPageId)
 
       const confluenceData = await getConfluenceDocument({
         pageId: projectPageId
