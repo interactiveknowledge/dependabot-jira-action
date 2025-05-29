@@ -364,8 +364,6 @@ export async function syncJiraWithOpenDependabotAlerts(
         projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'))
       }
 
-      core.debug(projectPageId)
-
       const confluenceData = await getConfluenceDocument({
         pageId: projectPageId
       })

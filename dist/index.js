@@ -289,7 +289,6 @@ function syncJiraWithOpenDependabotAlerts(params) {
                 if (projectPageId.includes('/')) {
                     projectPageId = projectPageId.substring(0, projectPageId.indexOf('/'));
                 }
-                core.debug(projectPageId);
                 const confluenceData = yield (0, jira_1.getConfluenceDocument)({
                     pageId: projectPageId
                 });
