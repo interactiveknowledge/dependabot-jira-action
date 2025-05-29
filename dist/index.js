@@ -223,7 +223,7 @@ function syncJiraWithOpenDependabotAlerts(params) {
             const jiraTickets = [];
             let projectStatus = 'none';
             for (const alert of dependabotAlerts) {
-                const issueSummary = `Dependabot ${alert.severity.toUpperCase()} alert: ${alert.summary}`;
+                const issueSummary = `Security Update: ${alert.severity.toUpperCase()} Severity for ${alert.package} (via dependabot)`;
                 const jiraTicketData = yield (0, jira_1.createJiraIssueFromAlerts)(Object.assign(Object.assign({}, alert), { label,
                     projectKey,
                     issueSummary,
@@ -433,7 +433,8 @@ function getDependabotOpenAlerts(params) {
                     vulnerable_version_range: alert.security_vulnerability.vulnerable_version_range,
                     lastUpdatedAt: alert.updated_at,
                     description: alert.security_advisory.description,
-                    summary: alert.security_advisory.summary
+                    summary: alert.security_advisory.summary,
+                    package: `${alert.dependency.ecosystem}/${alert.dependency.package}`
                 };
                 alerts.push(alertItem);
             }
@@ -480,7 +481,8 @@ function getDependabotOpenPullRequests(params) {
                             vulnerable_version_range: alert.security_vulnerability.vulnerable_version_range,
                             lastUpdatedAt: alert.updated_at,
                             description: alert.security_advisory.description,
-                            summary: alert.security_advisory.summary
+                            summary: alert.security_advisory.summary,
+                            package: packageName
                         };
                         alerts.push(alertItem);
                     }
@@ -871,7 +873,7 @@ function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repo
     });
 }
 exports.createJiraIssue = createJiraIssue;
-function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, severity, vulnerable_version_range, description, issueSummary }) {
+function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, severity, vulnerable_version_range, description, issueSummary, summary }) {
     return __awaiter(this, void 0, void 0, function* () {
         const issueNumberString = (0, actions_1.createIssueAlertNumberString)(number);
         const jql = `summary~"${issueSummary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
@@ -892,6 +894,15 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
                     {
                         type: 'text',
                         text: `------ ${severity.toUpperCase()} Vulnerability ------`
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: summary
                     }
                 ]
             },
