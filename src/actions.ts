@@ -37,6 +37,7 @@ export interface JiraAlertIssue {
   summary: string
   severity: string
   vulnerable_version_range: string
+  package: string
   jiraIssue: {
     key?: string
   }
@@ -243,7 +244,7 @@ export function buildModuleTable(jiraTickets: JiraAlertIssue[]): string {
       output += `</tr>`
     }
   } else {
-    output += `<tr><td colspan="3">There are no security updates for this project.</td></tr>`
+    output += `<tr><td colspan="3">There are no open dependabot security updates for this project.</td></tr>`
   }
 
   return output
@@ -266,9 +267,9 @@ export async function syncJiraWithOpenDependabotAlerts(
     let projectStatus = 'none'
 
     for (const alert of dependabotAlerts) {
-      const issueSummary = `Dependabot ${alert.severity.toUpperCase()} alert: ${
-        alert.summary
-      }`
+      const issueSummary = `Security Update: ${alert.severity.toUpperCase()} Severity for ${
+        alert.package
+      } (via dependabot)`
       const jiraTicketData = await createJiraIssueFromAlerts({
         ...alert,
         label,

@@ -206,7 +206,7 @@ function buildModuleTable(jiraTickets) {
         }
     }
     else {
-        output += `<tr><td colspan="3">There are no security updates for this project.</td></tr>`;
+        output += `<tr><td colspan="3">There are no open dependabot security updates for this project.</td></tr>`;
     }
     return output;
 }

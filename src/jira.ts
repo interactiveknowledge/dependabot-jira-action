@@ -383,7 +383,8 @@ export async function createJiraIssueFromAlerts({
   severity,
   vulnerable_version_range,
   description,
-  issueSummary
+  issueSummary,
+  summary
 }: CreateIssueFromAlert): Promise<ApiRequestResponse> {
   const issueNumberString = createIssueAlertNumberString(number)
   const jql = `summary~"${issueSummary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
@@ -406,6 +407,15 @@ export async function createJiraIssueFromAlerts({
         {
           type: 'text',
           text: `------ ${severity.toUpperCase()} Vulnerability ------`
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: summary
         }
       ]
     },

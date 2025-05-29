@@ -19,6 +19,7 @@ export interface DependabotAlert {
   number: string
   description: string
   summary: string
+  package: string
 }
 
 export interface PullRequest {
@@ -67,7 +68,8 @@ export async function getDependabotOpenAlerts(
           alert.security_vulnerability.vulnerable_version_range,
         lastUpdatedAt: alert.updated_at,
         description: alert.security_advisory.description,
-        summary: alert.security_advisory.summary
+        summary: alert.security_advisory.summary,
+        package: `${alert.dependency.ecosystem}/${alert.dependency.package}`
       }
 
       alerts.push(alertItem)
@@ -124,7 +126,8 @@ export async function getDependabotOpenPullRequests(
               alert.security_vulnerability.vulnerable_version_range,
             lastUpdatedAt: alert.updated_at,
             description: alert.security_advisory.description,
-            summary: alert.security_advisory.summary
+            summary: alert.security_advisory.summary,
+            package: packageName
           }
 
           alerts.push(alertItem)
