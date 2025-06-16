@@ -1,7 +1,7 @@
 
 # Dependaobot to JIRA Issue Sync Action
 
-Use this github action to create Jira issue from the dependabot pull requests created in your repo.
+Use this github action to create Jira issue from the dependabot alerts created in a IK project repo. (Customized from [sprout-tech/dependabot-jira-action](https://github.com/sprout-tech/dependabot-jira-action)) Additinally we have added the ability to update confluence documents associated with the project to create a report of sites' statuses.
 
 # Usage
 
@@ -44,6 +44,8 @@ jobs:
           databaseInfo: 'N/A'
           serverInfo: 'Heroku'
         env:
+        # All these are in the interactiveknowledge organization secrets. If outside our organization, 
+        # these will need to be added to the repo secrets at https://github.com/***/***/settings/secrets/actions
           JIRA_SUBDOMAIN: ${{ secrets.JIRA_SUBDOMAIN }}
           JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}

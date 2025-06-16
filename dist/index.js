@@ -434,7 +434,7 @@ function getDependabotOpenAlerts(params) {
                     lastUpdatedAt: alert.updated_at,
                     description: alert.security_advisory.description,
                     summary: alert.security_advisory.summary,
-                    package: `${alert.dependency.package.ecosystem}/${alert.dependency.package.name}`
+                    package: alert.dependency.package.name
                 };
                 alerts.push(alertItem);
             }
