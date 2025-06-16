@@ -71,7 +71,7 @@ function getJiraAuthorizedHeader(): HeaderInit {
   const token = process.env.JIRA_API_TOKEN
   core.info(`email ${email}`)
   const authorization = Buffer.from(`${email}:${token}`).toString('base64')
-  core.debug(`Basic ${authorization}`)
+  core.info(authorization)
   return {
     Authorization: `Basic ${authorization}`,
     Accept: 'application/json',
@@ -181,6 +181,7 @@ export async function jiraApiSearch({
   try {
     const getUrl = `${getJiraSearchApiUrl()}?jql=${encodeURIComponent(jql)}`
     core.info(`jql ${jql}`)
+    core.info(getUrl)
     const requestParams: RequestInit = {
       method: 'GET',
       headers: getJiraAuthorizedHeader()
@@ -518,12 +519,13 @@ export async function createJiraIssueFromAlerts({
     update: {}
   }
 
-  const data = await jiraApiPost({
-    url: getJiraApiUrlV3('/issue'),
-    data: body
-  })
+  // const data = await jiraApiPost({
+  //   url: getJiraApiUrlV3('/issue'),
+  //   data: body
+  // })
   core.debug(`Create issue success`)
-  return {data: data.data}
+  return {data: body}
+  // return {data: data.data}
 }
 
 export async function closeJiraIssue(
