@@ -587,6 +587,7 @@ function getJiraAuthorizedHeader() {
     const token = process.env.JIRA_API_TOKEN;
     core.info(`email ${email}`);
     const authorization = Buffer.from(`${email}:${token}`).toString('base64');
+    core.debug(`Basic ${authorization}`);
     return {
         Authorization: `Basic ${authorization}`,
         Accept: 'application/json',

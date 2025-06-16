@@ -16,7 +16,7 @@ test('test create jira search url', async () => {
   const subdomain = 'test-domain'
   process.env['JIRA_SUBDOMAIN'] = subdomain
   expect(getJiraSearchApiUrl()).toEqual(
-    `https://${subdomain}.atlassian.net/rest/api/2/search`
+    `https://${subdomain}.atlassian.net/rest/api/3/search`
   )
 })
 
