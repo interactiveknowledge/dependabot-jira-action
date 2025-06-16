@@ -71,7 +71,6 @@ function getJiraAuthorizedHeader(): HeaderInit {
   const token = process.env.JIRA_API_TOKEN
   core.info(`email ${email}`)
   const authorization = Buffer.from(`${email}:${token}`).toString('base64')
-  core.info(authorization)
   return {
     Authorization: `Basic ${authorization}`,
     Accept: 'application/json',
@@ -181,7 +180,6 @@ export async function jiraApiSearch({
   try {
     const getUrl = `${getJiraSearchApiUrl()}?jql=${encodeURIComponent(jql)}`
     core.info(`jql ${jql}`)
-    core.info(getUrl)
     const requestParams: RequestInit = {
       method: 'GET',
       headers: getJiraAuthorizedHeader()
@@ -214,7 +212,7 @@ export async function createJiraIssue({
   alerts
 }: CreateIssue): Promise<ApiRequestResponse> {
   const issueNumberString = createIssuePullNumberString(pullNumber)
-  const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
+  const jql = `description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
   const existingIssuesResponse = await jiraApiSearch({
     jql
   })
@@ -389,12 +387,10 @@ export async function createJiraIssueFromAlerts({
   summary
 }: CreateIssueFromAlert): Promise<ApiRequestResponse> {
   const issueNumberString = createIssueAlertNumberString(number)
-  const jql = `summary~"${issueSummary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
+  const jql = `description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
   const existingIssuesResponse = await jiraApiSearch({
     jql
   })
-
-  core.debug(JSON.stringify(existingIssuesResponse))
 
   if (
     existingIssuesResponse &&
@@ -519,13 +515,12 @@ export async function createJiraIssueFromAlerts({
     update: {}
   }
 
-  // const data = await jiraApiPost({
-  //   url: getJiraApiUrlV3('/issue'),
-  //   data: body
-  // })
+  const data = await jiraApiPost({
+    url: getJiraApiUrlV3('/issue'),
+    data: body
+  })
   core.debug(`Create issue success`)
-  return {data: body}
-  // return {data: data.data}
+  return {data: data.data}
 }
 
 export async function closeJiraIssue(

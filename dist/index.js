@@ -434,7 +434,7 @@ function getDependabotOpenAlerts(params) {
                     lastUpdatedAt: alert.updated_at,
                     description: alert.security_advisory.description,
                     summary: alert.security_advisory.summary,
-                    package: alert.dependency.package.name
+                    package: `${alert.dependency.package.ecosystem}/${alert.dependency.package.name}`
                 };
                 alerts.push(alertItem);
             }
@@ -587,7 +587,6 @@ function getJiraAuthorizedHeader() {
     const token = process.env.JIRA_API_TOKEN;
     core.info(`email ${email}`);
     const authorization = Buffer.from(`${email}:${token}`).toString('base64');
-    core.info(authorization);
     return {
         Authorization: `Basic ${authorization}`,
         Accept: 'application/json',
@@ -696,7 +695,6 @@ function jiraApiSearch({ jql }) {
         try {
             const getUrl = `${getJiraSearchApiUrl()}?jql=${encodeURIComponent(jql)}`;
             core.info(`jql ${jql}`);
-            core.info(getUrl);
             const requestParams = {
                 method: 'GET',
                 headers: getJiraAuthorizedHeader()
@@ -722,7 +720,7 @@ exports.jiraApiSearch = jiraApiSearch;
 function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, pullNumber, alerts }) {
     return __awaiter(this, void 0, void 0, function* () {
         const issueNumberString = (0, actions_1.createIssuePullNumberString)(pullNumber);
-        const jql = `summary~"${summary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
+        const jql = `description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
         const existingIssuesResponse = yield jiraApiSearch({
             jql
         });
@@ -878,11 +876,10 @@ exports.createJiraIssue = createJiraIssue;
 function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, severity, vulnerable_version_range, description, issueSummary, summary }) {
     return __awaiter(this, void 0, void 0, function* () {
         const issueNumberString = (0, actions_1.createIssueAlertNumberString)(number);
-        const jql = `summary~"${issueSummary}" AND description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
+        const jql = `description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
         const existingIssuesResponse = yield jiraApiSearch({
             jql
         });
-        core.debug(JSON.stringify(existingIssuesResponse));
         if (existingIssuesResponse &&
             existingIssuesResponse.issues &&
             existingIssuesResponse.issues.length > 0) {
@@ -1002,13 +999,12 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
             },
             update: {}
         };
-        // const data = await jiraApiPost({
-        //   url: getJiraApiUrlV3('/issue'),
-        //   data: body
-        // })
+        const data = yield jiraApiPost({
+            url: getJiraApiUrlV3('/issue'),
+            data: body
+        });
         core.debug(`Create issue success`);
-        return { data: body };
-        // return {data: data.data}
+        return { data: data.data };
     });
 }
 exports.createJiraIssueFromAlerts = createJiraIssueFromAlerts;
