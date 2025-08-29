@@ -87,7 +87,7 @@ export function getJiraApiUrlV3(path = '/'): string {
 
 export function getJiraSearchApiUrl(): string {
   const subdomain = process.env.JIRA_SUBDOMAIN
-  const url = `https://${subdomain}.atlassian.net/rest/api/3/search`
+  const url = `https://${subdomain}.atlassian.net/rest/api/3/search/jql`
   return url
 }
 
