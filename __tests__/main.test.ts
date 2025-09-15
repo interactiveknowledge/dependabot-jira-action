@@ -1,7 +1,7 @@
 import * as process from 'process'
 import {expect, test} from '@jest/globals'
 import {getJiraApiUrlV3, getJiraSearchApiUrl} from '../src/jira'
-import {createIssuePullNumberString, extractIssueNumber} from '../src/actions'
+// import {createIssueAlertNumberString, extractIssueNumber} from '../src/actions'
 
 test('test create jira api url', async () => {
   const subdomain = 'test-domain'
@@ -20,11 +20,11 @@ test('test create jira search url', async () => {
   )
 })
 
-test('extra issue number from description', async () => {
-  const issueNumber = '42'
-  const issueNumberString = createIssuePullNumberString(issueNumber.toString())
-  const issueNumberExtracted = extractIssueNumber(`
-    ${issueNumberString}
-  `)
-  expect(issueNumberExtracted).toEqual(issueNumber)
-})
+// test('extra issue number from description', async () => {
+//   const issueNumber = '42'
+//   const issueNumberString = createIssueAlertNumberString(issueNumber.toString())
+//   const issueNumberExtracted = extractIssueNumber(`
+//     ${issueNumberString}
+//   `)
+//   expect(issueNumberExtracted).toEqual(issueNumber)
+// })

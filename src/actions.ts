@@ -1,14 +1,5 @@
+import {DependabotAlert, getDependabotOpenAlerts} from './github'
 import {
-  DependabotAlert,
-  getDependabotOpenAlerts,
-  getDependabotOpenPullRequests,
-  getPullRequestByIssueId,
-  PullRequest
-} from './github'
-import {
-  closeJiraIssue,
-  createJiraIssue,
-  jiraApiSearch,
   getConfluenceDocument,
   getMarkupForStatusTags,
   createJiraIssueFromAlerts,
@@ -44,17 +35,13 @@ export interface JiraAlertIssue {
 }
 
 export function extractIssueNumber(description: string): string {
-  const issueNumberRegex = /PULL_NUMBER_(.*)_PULL_NUMBER/g
+  const issueNumberRegex = /ALERT_NUMBER_(.*)_ALERT_NUMBER_/g
   const parts = issueNumberRegex.exec(description)
   if (parts && parts.length > 1) {
     return parts[1]
   } else {
     return '-1'
   }
-}
-
-export function createIssuePullNumberString(pullNumber: string): string {
-  return `PULL_NUMBER_${pullNumber}_PULL_NUMBER`
 }
 
 export function createIssueAlertNumberString(pullNumber: string): string {
@@ -214,6 +201,8 @@ export function buildModuleTable(jiraTickets: JiraAlertIssue[]): string {
     high: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=High Severity&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=High Severity" data-macro-schema-version="1"></p>`,
     critical: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Critical Severity&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=Critical Severity" data-macro-schema-version="1"></p>`
   }
+
+  core.debug(JSON.stringify(jiraTickets))
 
   if (jiraTickets.length > 0) {
     for (const ticket of jiraTickets) {
@@ -401,109 +390,6 @@ export async function syncJiraWithOpenDependabotAlerts(
     )
     return 'success'
   } catch (e) {
-    throw e
-  }
-}
-
-export async function syncJiraWithOpenDependabotPulls(
-  params: SyncJiraOpen
-): Promise<string> {
-  try {
-    core.setOutput(
-      'Sync jira with open dependabot pulls starting',
-      new Date().toTimeString()
-    )
-    const {repo, owner, label, projectKey, issueType} = params
-    const dependabotPulls: PullRequest[] = await getDependabotOpenPullRequests({
-      repo,
-      owner
-    })
-    const jiraTickets = []
-
-    for (const pull of dependabotPulls) {
-      const jiraTicketData = await createJiraIssue({
-        label,
-        projectKey,
-        issueType,
-        ...pull
-      })
-
-      jiraTickets.push({
-        jiraTicketData,
-        label,
-        projectKey,
-        issueType,
-        ...pull
-      })
-    }
-
-    core.setOutput(
-      'Sync jira with open dependabot pulls success',
-      new Date().toTimeString()
-    )
-    return 'success'
-  } catch (e) {
-    throw e
-  }
-}
-
-export async function syncJiraWithClosedDependabotPulls(
-  params: SyncJiraOpen
-): Promise<string> {
-  try {
-    core.setOutput(
-      'Sync jira with closed dependabot pulls starting',
-      new Date().toTimeString()
-    )
-    const {
-      repo,
-      owner,
-      label,
-      projectKey,
-      issueType,
-      transitionDoneName,
-      closeIssueOnMerge
-    } = params
-
-    // First find all issues in jira that are not done
-    const jql = `labels="${label}" AND project=${projectKey} AND issuetype=${issueType} AND status != Done`
-    const existingIssuesResponse = await jiraApiSearch({
-      jql
-    })
-
-    if (
-      existingIssuesResponse &&
-      existingIssuesResponse.issues &&
-      existingIssuesResponse.issues.length > 0 &&
-      closeIssueOnMerge &&
-      closeIssueOnMerge === 'true'
-    ) {
-      // Loop through issue that are not done and check if they are done in github
-      for (const issue of existingIssuesResponse.issues) {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const issueNumber = extractIssueNumber(issue.fields.description)
-        const pullRequest = await getPullRequestByIssueId({
-          repo,
-          owner,
-          issueNumber
-        })
-        if (pullRequest.state === 'closed') {
-          // If the github issue is closed then close the jira issue
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          await closeJiraIssue(issue.id, transitionDoneName)
-        }
-      }
-    }
-
-    core.setOutput(
-      'Sync jira with closed dependabot pulls success',
-      new Date().toTimeString()
-    )
-    return 'success'
-  } catch (e) {
-    core.debug(`ERROR ${JSON.stringify(e)}`)
     throw e
   }
 }

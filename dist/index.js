@@ -39,12 +39,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.syncJiraWithClosedDependabotPulls = exports.syncJiraWithOpenDependabotPulls = exports.syncJiraWithOpenDependabotAlerts = exports.buildModuleTable = exports.buildProjectInfoTable = exports.buildNewTableRow = exports.getTableContent = exports.createIssueAlertNumberString = exports.createIssuePullNumberString = exports.extractIssueNumber = void 0;
+exports.syncJiraWithOpenDependabotAlerts = exports.buildModuleTable = exports.buildProjectInfoTable = exports.buildNewTableRow = exports.getTableContent = exports.createIssueAlertNumberString = exports.extractIssueNumber = void 0;
 const github_1 = __nccwpck_require__(5928);
 const jira_1 = __nccwpck_require__(4438);
 const core = __importStar(__nccwpck_require__(2186));
 function extractIssueNumber(description) {
-    const issueNumberRegex = /PULL_NUMBER_(.*)_PULL_NUMBER/g;
+    const issueNumberRegex = /ALERT_NUMBER_(.*)_ALERT_NUMBER_/g;
     const parts = issueNumberRegex.exec(description);
     if (parts && parts.length > 1) {
         return parts[1];
@@ -54,10 +54,6 @@ function extractIssueNumber(description) {
     }
 }
 exports.extractIssueNumber = extractIssueNumber;
-function createIssuePullNumberString(pullNumber) {
-    return `PULL_NUMBER_${pullNumber}_PULL_NUMBER`;
-}
-exports.createIssuePullNumberString = createIssuePullNumberString;
 function createIssueAlertNumberString(pullNumber) {
     return `ALERT_NUMBER_${pullNumber}_ALERT_NUMBER`;
 }
@@ -176,6 +172,7 @@ function buildModuleTable(jiraTickets) {
         high: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=High Severity&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=High Severity" data-macro-schema-version="1"></p>`,
         critical: `<p><img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=Critical Severity&amp;colour=Red" data-macro-name="status" data-macro-id="4153bbe0-727b-414b-997a-a96bc1feb2e7" data-macro-parameters="colour=Red|title=Critical Severity" data-macro-schema-version="1"></p>`
     };
+    core.debug(JSON.stringify(jiraTickets));
     if (jiraTickets.length > 0) {
         for (const ticket of jiraTickets) {
             output += `<tr>`;
@@ -319,77 +316,6 @@ function syncJiraWithOpenDependabotAlerts(params) {
     });
 }
 exports.syncJiraWithOpenDependabotAlerts = syncJiraWithOpenDependabotAlerts;
-function syncJiraWithOpenDependabotPulls(params) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            core.setOutput('Sync jira with open dependabot pulls starting', new Date().toTimeString());
-            const { repo, owner, label, projectKey, issueType } = params;
-            const dependabotPulls = yield (0, github_1.getDependabotOpenPullRequests)({
-                repo,
-                owner
-            });
-            const jiraTickets = [];
-            for (const pull of dependabotPulls) {
-                const jiraTicketData = yield (0, jira_1.createJiraIssue)(Object.assign({ label,
-                    projectKey,
-                    issueType }, pull));
-                jiraTickets.push(Object.assign({ jiraTicketData,
-                    label,
-                    projectKey,
-                    issueType }, pull));
-            }
-            core.setOutput('Sync jira with open dependabot pulls success', new Date().toTimeString());
-            return 'success';
-        }
-        catch (e) {
-            throw e;
-        }
-    });
-}
-exports.syncJiraWithOpenDependabotPulls = syncJiraWithOpenDependabotPulls;
-function syncJiraWithClosedDependabotPulls(params) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            core.setOutput('Sync jira with closed dependabot pulls starting', new Date().toTimeString());
-            const { repo, owner, label, projectKey, issueType, transitionDoneName, closeIssueOnMerge } = params;
-            // First find all issues in jira that are not done
-            const jql = `labels="${label}" AND project=${projectKey} AND issuetype=${issueType} AND status != Done`;
-            const existingIssuesResponse = yield (0, jira_1.jiraApiSearch)({
-                jql
-            });
-            if (existingIssuesResponse &&
-                existingIssuesResponse.issues &&
-                existingIssuesResponse.issues.length > 0 &&
-                closeIssueOnMerge &&
-                closeIssueOnMerge === 'true') {
-                // Loop through issue that are not done and check if they are done in github
-                for (const issue of existingIssuesResponse.issues) {
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
-                    const issueNumber = extractIssueNumber(issue.fields.description);
-                    const pullRequest = yield (0, github_1.getPullRequestByIssueId)({
-                        repo,
-                        owner,
-                        issueNumber
-                    });
-                    if (pullRequest.state === 'closed') {
-                        // If the github issue is closed then close the jira issue
-                        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                        // @ts-ignore
-                        yield (0, jira_1.closeJiraIssue)(issue.id, transitionDoneName);
-                    }
-                }
-            }
-            core.setOutput('Sync jira with closed dependabot pulls success', new Date().toTimeString());
-            return 'success';
-        }
-        catch (e) {
-            core.debug(`ERROR ${JSON.stringify(e)}`);
-            throw e;
-        }
-    });
-}
-exports.syncJiraWithClosedDependabotPulls = syncJiraWithClosedDependabotPulls;
 
 
 /***/ }),
@@ -578,7 +504,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getConfluenceDocument = exports.closeJiraIssue = exports.createJiraIssueFromAlerts = exports.createJiraIssue = exports.jiraApiSearch = exports.getMarkupForStatusTags = exports.saveConfluenceDocument = exports.getConfluenceDocumentApiUrl = exports.getJiraSearchApiUrl = exports.getJiraApiUrlV3 = void 0;
+exports.getConfluenceDocument = exports.closeJiraIssue = exports.createJiraIssueFromAlerts = exports.jiraApiSearch = exports.getMarkupForStatusTags = exports.saveConfluenceDocument = exports.getConfluenceDocumentApiUrl = exports.getJiraSearchApiUrl = exports.getJiraApiUrlV3 = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const node_fetch_1 = __importDefault(__nccwpck_require__(467));
 const actions_1 = __nccwpck_require__(3623);
@@ -693,7 +619,7 @@ function jiraApiPost(params) {
 function jiraApiSearch({ jql }) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const getUrl = `${getJiraSearchApiUrl()}?jql=${encodeURIComponent(jql)}`;
+            const getUrl = `${getJiraSearchApiUrl()}?jql=${encodeURIComponent(jql)}&fields=key`;
             core.info(`jql ${jql}`);
             const requestParams = {
                 method: 'GET',
@@ -718,162 +644,6 @@ function jiraApiSearch({ jql }) {
     });
 }
 exports.jiraApiSearch = jiraApiSearch;
-function createJiraIssue({ label, projectKey, summary, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, pullNumber, alerts }) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const issueNumberString = (0, actions_1.createIssuePullNumberString)(pullNumber);
-        const jql = `description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
-        const existingIssuesResponse = yield jiraApiSearch({
-            jql
-        });
-        if (existingIssuesResponse &&
-            existingIssuesResponse.issues &&
-            existingIssuesResponse.issues.length > 0) {
-            core.debug(`Has existing issue skipping`);
-            return { data: existingIssuesResponse.issues[0] };
-        }
-        core.debug(`Did not find exising, trying create`);
-        const bodyContent = [
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        text: `Application repo: ${repoName}`,
-                        type: 'text',
-                        marks: [
-                            {
-                                type: 'link',
-                                attrs: {
-                                    href: repoUrl
-                                }
-                            }
-                        ]
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        text: `Pull request last updated at: ${lastUpdatedAt}`,
-                        type: 'text'
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: `Pull request url: `
-                    },
-                    {
-                        type: 'text',
-                        text: `${url}`,
-                        marks: [
-                            {
-                                type: 'link',
-                                attrs: {
-                                    href: url
-                                }
-                            }
-                        ]
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: issueNumberString
-                    }
-                ]
-            }
-        ];
-        if (alerts && alerts.length > 0) {
-            for (const alert of alerts) {
-                bodyContent.push({
-                    type: 'paragraph',
-                    content: [
-                        {
-                            type: 'text',
-                            text: `------ ${alert.severity.toUpperCase()} Vulnerability ------`
-                        }
-                    ]
-                });
-                bodyContent.push({
-                    type: 'paragraph',
-                    content: [
-                        {
-                            type: 'text',
-                            text: `Version Range: ${alert.vulnerable_version_range}`
-                        }
-                    ]
-                });
-                bodyContent.push({
-                    type: 'paragraph',
-                    content: [
-                        {
-                            type: 'text',
-                            text: alert.description
-                        }
-                    ]
-                });
-                bodyContent.push({
-                    type: 'paragraph',
-                    content: [
-                        {
-                            type: 'text',
-                            text: `Alert Number ${alert.number}`,
-                            marks: [
-                                {
-                                    type: 'link',
-                                    attrs: {
-                                        href: alert.url
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                });
-                bodyContent.push({
-                    type: 'paragraph',
-                    content: [
-                        {
-                            type: 'text',
-                            text: `------------`
-                        }
-                    ]
-                });
-            }
-        }
-        const body = {
-            fields: {
-                labels: [label],
-                project: {
-                    key: projectKey
-                },
-                summary,
-                description: {
-                    content: bodyContent,
-                    type: 'doc',
-                    version: 1
-                },
-                issuetype: {
-                    name: issueType
-                }
-            },
-            update: {}
-        };
-        const data = yield jiraApiPost({
-            url: getJiraApiUrlV3('/issue'),
-            data: body
-        });
-        core.debug(`Create issue success`);
-        return { data };
-    });
-}
-exports.createJiraIssue = createJiraIssue;
 function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, severity, vulnerable_version_range, description, issueSummary, summary }) {
     return __awaiter(this, void 0, void 0, function* () {
         const issueNumberString = (0, actions_1.createIssueAlertNumberString)(number);
@@ -1168,18 +938,18 @@ function run() {
             const issueType = core.getInput('jiraIssueType');
             const repo = core.getInput('githubRepo');
             const owner = core.getInput('githubOwner');
-            const closeIssueOnMerge = core.getInput('closeIssueOnMerge');
-            // First close jira issue that are closed in github
-            if (closeIssueOnMerge === 'true') {
-                yield (0, actions_1.syncJiraWithClosedDependabotPulls)({
-                    repo,
-                    owner,
-                    label,
-                    projectKey,
-                    issueType,
-                    closeIssueOnMerge
-                });
-            }
+            // const closeIssueOnMerge: string = core.getInput('closeIssueOnMerge')
+            // // First close jira issue that are closed in github
+            // if (closeIssueOnMerge === 'true') {
+            //   await syncJiraWithClosedDependabotPulls({
+            //     repo,
+            //     owner,
+            //     label,
+            //     projectKey,
+            //     issueType,
+            //     closeIssueOnMerge
+            //   })
+            // }
             // Then open new issues in jira from open dependabot issues
             yield (0, actions_1.syncJiraWithOpenDependabotAlerts)({
                 repo,

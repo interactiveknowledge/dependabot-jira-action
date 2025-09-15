@@ -1,9 +1,6 @@
 import * as core from '@actions/core'
 import fetch, {HeaderInit, RequestInit, Response} from 'node-fetch'
-import {
-  createIssueAlertNumberString,
-  createIssuePullNumberString
-} from './actions'
+import {createIssueAlertNumberString} from './actions'
 import {DependabotAlert} from './github'
 
 interface ApiPostParams {
@@ -178,7 +175,9 @@ export async function jiraApiSearch({
   jql
 }: SearchIssue): Promise<ApiRequestSearchResponse> {
   try {
-    const getUrl = `${getJiraSearchApiUrl()}?jql=${encodeURIComponent(jql)}`
+    const getUrl = `${getJiraSearchApiUrl()}?jql=${encodeURIComponent(
+      jql
+    )}&fields=key`
     core.info(`jql ${jql}`)
     const requestParams: RequestInit = {
       method: 'GET',
@@ -198,178 +197,6 @@ export async function jiraApiSearch({
     core.error('Error getting the existing issue')
     throw new Error('Error getting the existing issue')
   }
-}
-
-export async function createJiraIssue({
-  label,
-  projectKey,
-  summary,
-  issueType = 'Story',
-  repoName,
-  repoUrl,
-  url,
-  lastUpdatedAt,
-  pullNumber,
-  alerts
-}: CreateIssue): Promise<ApiRequestResponse> {
-  const issueNumberString = createIssuePullNumberString(pullNumber)
-  const jql = `description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
-  const existingIssuesResponse = await jiraApiSearch({
-    jql
-  })
-  if (
-    existingIssuesResponse &&
-    existingIssuesResponse.issues &&
-    existingIssuesResponse.issues.length > 0
-  ) {
-    core.debug(`Has existing issue skipping`)
-    return {data: existingIssuesResponse.issues[0]}
-  }
-  core.debug(`Did not find exising, trying create`)
-  const bodyContent = [
-    {
-      type: 'paragraph',
-      content: [
-        {
-          text: `Application repo: ${repoName}`,
-          type: 'text',
-          marks: [
-            {
-              type: 'link',
-              attrs: {
-                href: repoUrl
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          text: `Pull request last updated at: ${lastUpdatedAt}`,
-          type: 'text'
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: `Pull request url: `
-        },
-        {
-          type: 'text',
-          text: `${url}`,
-          marks: [
-            {
-              type: 'link',
-              attrs: {
-                href: url
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: issueNumberString
-        }
-      ]
-    }
-  ]
-
-  if (alerts && alerts.length > 0) {
-    for (const alert of alerts) {
-      bodyContent.push({
-        type: 'paragraph',
-        content: [
-          {
-            type: 'text',
-            text: `------ ${alert.severity.toUpperCase()} Vulnerability ------`
-          }
-        ]
-      })
-
-      bodyContent.push({
-        type: 'paragraph',
-        content: [
-          {
-            type: 'text',
-            text: `Version Range: ${alert.vulnerable_version_range}`
-          }
-        ]
-      })
-
-      bodyContent.push({
-        type: 'paragraph',
-        content: [
-          {
-            type: 'text',
-            text: alert.description
-          }
-        ]
-      })
-      bodyContent.push({
-        type: 'paragraph',
-        content: [
-          {
-            type: 'text',
-            text: `Alert Number ${alert.number}`,
-            marks: [
-              {
-                type: 'link',
-                attrs: {
-                  href: alert.url
-                }
-              }
-            ]
-          }
-        ]
-      })
-      bodyContent.push({
-        type: 'paragraph',
-        content: [
-          {
-            type: 'text',
-            text: `------------`
-          }
-        ]
-      })
-    }
-  }
-
-  const body = {
-    fields: {
-      labels: [label],
-      project: {
-        key: projectKey
-      },
-      summary,
-      description: {
-        content: bodyContent,
-        type: 'doc',
-        version: 1
-      },
-      issuetype: {
-        name: issueType
-      }
-    },
-    update: {}
-  }
-
-  const data = await jiraApiPost({
-    url: getJiraApiUrlV3('/issue'),
-    data: body
-  })
-  core.debug(`Create issue success`)
-  return {data}
 }
 
 export async function createJiraIssueFromAlerts({
