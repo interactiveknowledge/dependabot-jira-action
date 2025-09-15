@@ -398,6 +398,7 @@ export async function createJiraIssueFromAlerts({
     existingIssuesResponse.issues.length > 0
   ) {
     core.debug(`Has existing issue skipping`)
+    core.debug(JSON.stringify(existingIssuesResponse.issues[0]))
     return {data: existingIssuesResponse.issues[0]}
   }
   core.debug(`Did not find exising, trying create`)
