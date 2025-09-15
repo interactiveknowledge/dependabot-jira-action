@@ -1,13 +1,10 @@
 import {
   DependabotAlert,
   getDependabotOpenAlerts,
-  getDependabotOpenPullRequests,
-  getPullRequestByIssueId,
-  PullRequest
+  getPullRequestByIssueId
 } from './github'
 import {
   closeJiraIssue,
-  createJiraIssue,
   jiraApiSearch,
   getConfluenceDocument,
   getMarkupForStatusTags,
@@ -393,48 +390,6 @@ export async function syncJiraWithOpenDependabotAlerts(
           newHtml
         )
       }
-    }
-
-    core.setOutput(
-      'Sync jira with open dependabot pulls success',
-      new Date().toTimeString()
-    )
-    return 'success'
-  } catch (e) {
-    throw e
-  }
-}
-
-export async function syncJiraWithOpenDependabotPulls(
-  params: SyncJiraOpen
-): Promise<string> {
-  try {
-    core.setOutput(
-      'Sync jira with open dependabot pulls starting',
-      new Date().toTimeString()
-    )
-    const {repo, owner, label, projectKey, issueType} = params
-    const dependabotPulls: PullRequest[] = await getDependabotOpenPullRequests({
-      repo,
-      owner
-    })
-    const jiraTickets = []
-
-    for (const pull of dependabotPulls) {
-      const jiraTicketData = await createJiraIssue({
-        label,
-        projectKey,
-        issueType,
-        ...pull
-      })
-
-      jiraTickets.push({
-        jiraTicketData,
-        label,
-        projectKey,
-        issueType,
-        ...pull
-      })
     }
 
     core.setOutput(
