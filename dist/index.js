@@ -683,6 +683,7 @@ function jiraApiSearch({ jql }) {
                 return yield response.json();
             }
             else {
+                core.debug(JSON.stringify(response));
                 const error = yield response.json();
                 const errors = Object.values(error.errorMessages);
                 const message = errors.join(',');

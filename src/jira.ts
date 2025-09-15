@@ -192,6 +192,7 @@ export async function jiraApiSearch({
     if (response.status === 200) {
       return await response.json()
     } else {
+      core.debug(JSON.stringify(response))
       const error = await response.json()
       const errors = Object.values(error.errorMessages)
       const message = errors.join(',')
