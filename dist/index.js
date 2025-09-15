@@ -602,7 +602,7 @@ function getJiraApiUrlV3(path = '/') {
 exports.getJiraApiUrlV3 = getJiraApiUrlV3;
 function getJiraSearchApiUrl() {
     const subdomain = process.env.JIRA_SUBDOMAIN;
-    const url = `https://${subdomain}.atlassian.net/rest/api/3/search/jql`;
+    const url = `https://${subdomain}.atlassian.net/rest/api/3/search`;
     return url;
 }
 exports.getJiraSearchApiUrl = getJiraSearchApiUrl;
