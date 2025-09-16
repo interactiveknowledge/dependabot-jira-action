@@ -51,6 +51,18 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           GITHUB_API_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           CONFLUENCE_PROJECTS_DOC_ID: ${{ secrets.CONFLUENCE_PROJECTS_DOC_ID }}
+  check-failure:
+      name: Check action failure
+      needs: jira
+      runs-on: ubuntu-latest
+      if: ${{ failure() }}
+      steps:
+      - uses: actions/checkout@v4
+      - name: Slack Notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_URL_DEPENDABOT_FAILURE_ALERT }}
+
 ```
 
 # License
@@ -139,3 +151,4 @@ See the [actions tab](https://github.com/actions/typescript-action/actions) for 
 ## Usage:
 
 After testing you can [create a v1 tag](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md) to reference the stable and latest V1 action
+
