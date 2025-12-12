@@ -6,7 +6,7 @@ import {
   saveConfluenceDocument
 } from './jira'
 import * as core from '@actions/core'
-
+import {IK_DEVS_VERSION} from './version'
 export interface SyncJiraOpen {
   repo: string
   owner: string
@@ -130,7 +130,7 @@ export function buildNewTableRow({
     serverInfo !== '' ? serverInfo : 'N/A'
   }</p></td>`
   // Last Checked
-  output += `<td class="confluenceTd"><p>${currentDate}<img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=automatically&amp;colour=Purple" data-macro-name="status" data-macro-id="9e4125f0-89a1-4143-a6cd-babe9f33f38c" data-macro-parameters="colour=Purple|title=automatically via github actions" data-macro-schema-version="1"></p></td>`
+  output += `<td class="confluenceTd"><p>${currentDate}<img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=automatically&amp;colour=Purple" data-macro-name="status" data-macro-id="9e4125f0-89a1-4143-a6cd-babe9f33f38c" data-macro-parameters="colour=Purple|title=automatically via github actions" data-macro-schema-version="1"></p><h6>(ik_devs dependabot action v.${IK_DEVS_VERSION})</h6></td>`
   output += '</tr>'
 
   return output
@@ -189,6 +189,8 @@ export function buildProjectInfoTable({
   if (databaseInfo && databaseInfo !== '') {
     output += `<tr><th>Database Information</th><td>${databaseInfo}</td></tr>`
   }
+
+  output += `<tr><th>ik_devs Github Action Version</th><td>${IK_DEVS_VERSION}</td></tr>`
 
   return output
 }
@@ -330,7 +332,9 @@ export async function syncJiraWithOpenDependabotAlerts(
           newTableRows.push(newRowValue)
         }
 
-        const newTableContent = newTableRows.join('')
+        const newTableContent = newTableRows
+          .join('')
+          .replace('ac:local-id', 'local-id') // See https://interactiveknowledge.atlassian.net/browse/ADM-680?focusedCommentId=55084
         const newHtml = currentHtml.replace(tableContent, newTableContent)
 
         await saveConfluenceDocument(

@@ -43,6 +43,7 @@ exports.syncJiraWithOpenDependabotAlerts = exports.buildModuleTable = exports.bu
 const github_1 = __nccwpck_require__(5928);
 const jira_1 = __nccwpck_require__(4438);
 const core = __importStar(__nccwpck_require__(2186));
+const version_1 = __nccwpck_require__(8217);
 function extractIssueNumber(description) {
     const issueNumberRegex = /ALERT_NUMBER_(.*)_ALERT_NUMBER_/g;
     const parts = issueNumberRegex.exec(description);
@@ -114,7 +115,7 @@ function buildNewTableRow({ projectKey, projectStatus, owner, repo }) {
     // Server Information
     output += `<td class="confluenceTd"><p>${serverInfo !== '' ? serverInfo : 'N/A'}</p></td>`;
     // Last Checked
-    output += `<td class="confluenceTd"><p>${currentDate}<img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=automatically&amp;colour=Purple" data-macro-name="status" data-macro-id="9e4125f0-89a1-4143-a6cd-babe9f33f38c" data-macro-parameters="colour=Purple|title=automatically via github actions" data-macro-schema-version="1"></p></td>`;
+    output += `<td class="confluenceTd"><p>${currentDate}<img class="editor-inline-macro" height="18" width="88" src="/wiki/plugins/servlet/status-macro/placeholder?title=automatically&amp;colour=Purple" data-macro-name="status" data-macro-id="9e4125f0-89a1-4143-a6cd-babe9f33f38c" data-macro-parameters="colour=Purple|title=automatically via github actions" data-macro-schema-version="1"></p><h6>(ik_devs dependabot action v.${version_1.IK_DEVS_VERSION})</h6></td>`;
     output += '</tr>';
     return output;
 }
@@ -161,6 +162,7 @@ function buildProjectInfoTable({ projectKey, projectStatus, owner, repo }) {
     if (databaseInfo && databaseInfo !== '') {
         output += `<tr><th>Database Information</th><td>${databaseInfo}</td></tr>`;
     }
+    output += `<tr><th>ik_devs Github Action Version</th><td>${version_1.IK_DEVS_VERSION}</td></tr>`;
     return output;
 }
 exports.buildProjectInfoTable = buildProjectInfoTable;
@@ -274,7 +276,9 @@ function syncJiraWithOpenDependabotAlerts(params) {
                     if (found === false) {
                         newTableRows.push(newRowValue);
                     }
-                    const newTableContent = newTableRows.join('');
+                    const newTableContent = newTableRows
+                        .join('')
+                        .replace('ac:local-id', 'local-id'); // See https://interactiveknowledge.atlassian.net/browse/ADM-680?focusedCommentId=55084
                     const newHtml = currentHtml.replace(tableContent, newTableContent);
                     yield (0, jira_1.saveConfluenceDocument)(projectDocId, pageTitle, newVersion, newHtml);
                 }
@@ -968,6 +972,18 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 8217:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.IK_DEVS_VERSION = void 0;
+exports.IK_DEVS_VERSION = "2.0.1";
 
 
 /***/ }),
