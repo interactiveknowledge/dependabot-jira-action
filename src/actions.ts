@@ -190,7 +190,7 @@ export function buildProjectInfoTable({
     output += `<tr><th>Database Information</th><td>${databaseInfo}</td></tr>`
   }
 
-  output += `<tr><th>ik_devs Github Action Version</th><td>${IK_DEVS_VERSION}</td></tr>`
+  output += `<tr><th>ik_devs Github Action v.</th><td>${IK_DEVS_VERSION}</td></tr>`
 
   return output
 }

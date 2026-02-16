@@ -62,6 +62,7 @@ jobs:
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_URL_DEPENDABOT_FAILURE_ALERT }}
+          SLACK_COLOR: failure
 
 ```
 
