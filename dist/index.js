@@ -983,7 +983,7 @@ run();
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.IK_DEVS_VERSION = void 0;
-exports.IK_DEVS_VERSION = "2.0.1";
+exports.IK_DEVS_VERSION = "2.0.2";
 
 
 /***/ }),
