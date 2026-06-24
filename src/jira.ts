@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import fetch, {HeaderInit, RequestInit, Response} from 'node-fetch'
-import {createIssueAlertNumberString, createIssuePackageString} from './actions'
+import {createIssuePackageString} from './actions'
 import {DependabotAlert} from './github'
 
 interface ApiPostParams {
@@ -309,7 +309,6 @@ export async function createJiraIssueFromAlerts({
   issueSummary,
   summary
 }: CreateIssueFromAlert): Promise<ApiRequestResponse> {
-  const issueNumberString = createIssueAlertNumberString(number)
   const packageMarkerString = createIssuePackageString(packageName)
   const packageLabel = createJiraSafeLabel(packageName, 'dependabot_pkg')
   const repoLabel = createJiraSafeLabel(repoName, 'dependabot_repo')
@@ -320,7 +319,7 @@ export async function createJiraIssueFromAlerts({
   })
   const foundByPrimaryLabels = existingIssuesResponse.issues.length > 0
 
-  const legacyJql = `(description~"${packageMarkerString}" OR description~"${issueNumberString}") AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
+  const legacyJql = `(description~"${packageMarkerString}" OR AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
   const legacyIssuesResponse =
     existingIssuesResponse.issues.length > 0
       ? existingIssuesResponse
@@ -445,15 +444,6 @@ export async function createJiraIssueFromAlerts({
         {
           type: 'text',
           text: `Package: ${packageName}`
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: issueNumberString
         }
       ]
     },

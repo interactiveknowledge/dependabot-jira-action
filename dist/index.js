@@ -39,26 +39,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.syncJiraWithOpenDependabotAlerts = exports.buildModuleTable = exports.buildProjectInfoTable = exports.buildNewTableRow = exports.getTableContent = exports.createIssuePackageString = exports.createIssueAlertNumberString = exports.extractIssueNumber = void 0;
+exports.syncJiraWithOpenDependabotAlerts = exports.buildModuleTable = exports.buildProjectInfoTable = exports.buildNewTableRow = exports.getTableContent = exports.createIssuePackageString = void 0;
 const github_1 = __nccwpck_require__(5928);
 const jira_1 = __nccwpck_require__(4438);
 const core = __importStar(__nccwpck_require__(2186));
 const version_1 = __nccwpck_require__(8217);
-function extractIssueNumber(description) {
-    const issueNumberRegex = /ALERT_NUMBER_(.*)_ALERT_NUMBER_/g;
-    const parts = issueNumberRegex.exec(description);
-    if (parts && parts.length > 1) {
-        return parts[1];
-    }
-    else {
-        return '-1';
-    }
-}
-exports.extractIssueNumber = extractIssueNumber;
-function createIssueAlertNumberString(pullNumber) {
-    return `ALERT_NUMBER_${pullNumber}_ALERT_NUMBER`;
-}
-exports.createIssueAlertNumberString = createIssueAlertNumberString;
 function createIssuePackageString(packageName) {
     const normalizedPackage = packageName
         .trim()
@@ -776,7 +761,6 @@ function closeResolvedPackageJiraIssues({ label, projectKey, issueType, repoName
 exports.closeResolvedPackageJiraIssues = closeResolvedPackageJiraIssues;
 function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, package: packageName, alerts, severity, vulnerable_version_range, description, issueSummary, summary }) {
     return __awaiter(this, void 0, void 0, function* () {
-        const issueNumberString = (0, actions_1.createIssueAlertNumberString)(number);
         const packageMarkerString = (0, actions_1.createIssuePackageString)(packageName);
         const packageLabel = createJiraSafeLabel(packageName, 'dependabot_pkg');
         const repoLabel = createJiraSafeLabel(repoName, 'dependabot_repo');
@@ -785,7 +769,7 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
             jql
         });
         const foundByPrimaryLabels = existingIssuesResponse.issues.length > 0;
-        const legacyJql = `(description~"${packageMarkerString}" OR description~"${issueNumberString}") AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
+        const legacyJql = `(description~"${packageMarkerString}" OR AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
         const legacyIssuesResponse = existingIssuesResponse.issues.length > 0
             ? existingIssuesResponse
             : yield jiraApiSearch({ jql: legacyJql });
@@ -903,15 +887,6 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
                     {
                         type: 'text',
                         text: `Package: ${packageName}`
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: issueNumberString
                     }
                 ]
             },

@@ -34,20 +34,6 @@ export interface JiraAlertIssue {
   }
 }
 
-export function extractIssueNumber(description: string): string {
-  const issueNumberRegex = /ALERT_NUMBER_(.*)_ALERT_NUMBER_/g
-  const parts = issueNumberRegex.exec(description)
-  if (parts && parts.length > 1) {
-    return parts[1]
-  } else {
-    return '-1'
-  }
-}
-
-export function createIssueAlertNumberString(pullNumber: string): string {
-  return `ALERT_NUMBER_${pullNumber}_ALERT_NUMBER`
-}
-
 export function createIssuePackageString(packageName: string): string {
   const normalizedPackage = packageName
     .trim()
