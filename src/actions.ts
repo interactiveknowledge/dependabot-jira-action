@@ -1,5 +1,6 @@
 import {DependabotAlert, getDependabotOpenAlerts} from './github'
 import {
+  closeResolvedPackageJiraIssues,
   getConfluenceDocument,
   getMarkupForStatusTags,
   createJiraIssueFromAlerts,
@@ -326,7 +327,8 @@ export async function syncJiraWithOpenDependabotAlerts(
       'Sync jira with open dependabot pulls starting',
       new Date().toTimeString()
     )
-    const {repo, owner, label, projectKey, issueType} = params
+    const {repo, owner, label, projectKey, issueType, transitionDoneName} =
+      params
     const dependabotAlerts: DependabotAlert[] = await getDependabotOpenAlerts({
       repo,
       owner
@@ -361,6 +363,15 @@ export async function syncJiraWithOpenDependabotAlerts(
         jiraIssue: jiraTicketData.data
       })
     }
+
+    await closeResolvedPackageJiraIssues({
+      label,
+      projectKey,
+      issueType,
+      repoName: repo,
+      openPackages: groupedDependabotAlerts.map(item => item.package),
+      transitionName: transitionDoneName
+    })
 
     // Update confluence.
     // Projects & Hosting Documents

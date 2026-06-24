@@ -33,6 +33,15 @@ interface SearchDocument {
   pageId: string
 }
 
+interface CloseResolvedPackageIssues {
+  label: string
+  projectKey: string
+  issueType: string
+  repoName: string
+  openPackages: string[]
+  transitionName?: string
+}
+
 function createJiraSafeLabel(value: string, prefix: string): string {
   const normalizedValue = value
     .trim()
@@ -223,7 +232,7 @@ export async function jiraApiSearch({
   try {
     const getUrl = `${getJiraSearchApiUrl()}?jql=${encodeURIComponent(
       jql
-    )}&fields=key`
+    )}&fields=key,labels`
     core.info(`jql ${jql}`)
     const requestParams: RequestInit = {
       method: 'GET',
@@ -242,6 +251,44 @@ export async function jiraApiSearch({
   } catch (e) {
     core.error('Error getting the existing issue')
     throw new Error('Error getting the existing issue')
+  }
+}
+
+export async function closeResolvedPackageJiraIssues({
+  label,
+  projectKey,
+  issueType,
+  repoName,
+  openPackages,
+  transitionName = 'done'
+}: CloseResolvedPackageIssues): Promise<void> {
+  const repoLabel = createJiraSafeLabel(repoName, 'dependabot_repo')
+  const openPackageLabels = new Set(
+    openPackages.map(item => createJiraSafeLabel(item, 'dependabot_pkg'))
+  )
+  const jql = `labels="${label}" AND labels="${repoLabel}" AND project="${projectKey}" AND issuetype="${issueType}" AND statusCategory != Done`
+  const existingIssuesResponse = await jiraApiSearch({jql})
+
+  for (const issue of existingIssuesResponse.issues as Array<{
+    key?: string
+    fields?: {labels?: string[]}
+  }>) {
+    const issueKey = issue.key
+    const labelsForIssue = issue.fields?.labels || []
+    const packageLabel = labelsForIssue.find(item =>
+      item.startsWith('dependabot_pkg_')
+    )
+
+    if (!issueKey || !packageLabel || openPackageLabels.has(packageLabel)) {
+      continue
+    }
+
+    try {
+      await closeJiraIssue(issueKey, transitionName)
+      core.debug(`Closed Jira issue ${issueKey} for resolved package`)
+    } catch (e) {
+      core.debug(`Failed to close Jira issue ${issueKey} for resolved package`)
+    }
   }
 }
 
@@ -490,7 +537,7 @@ export async function closeJiraIssue(
                 {
                   content: [
                     {
-                      text: 'Closed by dependabot',
+                      text: 'Closed by ik_devs dependabot action',
                       type: 'text'
                     }
                   ],
