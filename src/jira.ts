@@ -25,6 +25,15 @@ interface ApiDocumentResponse {
 interface ApiRequestSearchResponse {
   issues: object[]
 }
+
+interface JiraIssueDescriptionNode {
+  text?: string
+  content?: JiraIssueDescriptionNode[]
+}
+
+interface JiraIssueDescription {
+  content?: JiraIssueDescriptionNode[]
+}
 interface SearchIssue {
   jql: string
 }
@@ -226,6 +235,277 @@ async function addLabelsToJiraIssue(
   throw new Error('Failed to update issue labels')
 }
 
+async function updateJiraIssueDescription(
+  issueKey: string,
+  bodyContent: Record<string, unknown>[]
+): Promise<void> {
+  const body = {
+    fields: {
+      description: {
+        content: bodyContent,
+        type: 'doc',
+        version: 1
+      }
+    }
+  }
+
+  const response = await fetch(getJiraApiUrlV3(`/issue/${issueKey}`), {
+    method: 'PUT',
+    headers: getJiraAuthorizedHeader(),
+    body: JSON.stringify(body)
+  })
+
+  if (response.status === 204) {
+    return
+  }
+
+  try {
+    const error = await response.json()
+    core.error(error)
+  } catch (e) {
+    core.error('error in updateJiraIssueDescription response.json()')
+  }
+
+  throw new Error('Failed to update issue description')
+}
+
+function collectTextFromDescriptionNodes(
+  nodes: JiraIssueDescriptionNode[]
+): string[] {
+  const output: string[] = []
+
+  for (const node of nodes) {
+    if (node.text) {
+      output.push(node.text)
+    }
+
+    if (node.content && node.content.length > 0) {
+      output.push(...collectTextFromDescriptionNodes(node.content))
+    }
+  }
+
+  return output
+}
+
+function extractAlertNumbersFromDescription(
+  description?: JiraIssueDescription
+): Set<string> {
+  const nodes = description?.content || []
+  const text = collectTextFromDescriptionNodes(nodes).join('\n')
+  const matches = text.matchAll(/-\s*(\d+):/g)
+  const alertNumbers = new Set<string>()
+
+  for (const match of matches) {
+    alertNumbers.add(match[1])
+  }
+
+  return alertNumbers
+}
+
+async function getJiraIssueAlertNumbers(
+  issueKey: string
+): Promise<Set<string>> {
+  const response = await fetch(
+    getJiraApiUrlV3(`/issue/${issueKey}?fields=description`),
+    {
+      method: 'GET',
+      headers: getJiraAuthorizedHeader()
+    }
+  )
+
+  if (response.status !== 200) {
+    try {
+      const error = await response.json()
+      core.error(error)
+    } catch (e) {
+      core.error('error in getJiraIssueAlertNumbers response.json()')
+    }
+
+    throw new Error('Failed to load Jira issue description')
+  }
+
+  const issueResponse = (await response.json()) as {
+    fields?: {description?: JiraIssueDescription}
+  }
+
+  return extractAlertNumbersFromDescription(issueResponse.fields?.description)
+}
+
+function hasAlertNumberDifference(
+  existingAlertNumbers: Set<string>,
+  incomingAlertNumbers: Set<string>
+): boolean {
+  if (existingAlertNumbers.size !== incomingAlertNumbers.size) {
+    return true
+  }
+
+  for (const number of incomingAlertNumbers) {
+    if (!existingAlertNumbers.has(number)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function buildIssueBodyContent({
+  severity,
+  summary,
+  vulnerable_version_range,
+  description,
+  repoName,
+  repoUrl,
+  lastUpdatedAt,
+  packageName,
+  packageMarkerString,
+  alertItems,
+  includeUpdatedNotice = false
+}: {
+  severity: string
+  summary: string
+  vulnerable_version_range: string
+  description: string
+  repoName: string
+  repoUrl: string
+  lastUpdatedAt: string
+  packageName: string
+  packageMarkerString: string
+  alertItems: DependabotAlert[]
+  includeUpdatedNotice?: boolean
+}): Record<string, unknown>[] {
+  const bodyContent: Record<string, unknown>[] = []
+
+  if (includeUpdatedNotice) {
+    bodyContent.push({
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: 'NOTE: This issue was updated because the open Dependabot alert numbers changed.'
+        }
+      ]
+    })
+  }
+
+  bodyContent.push(
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `------ ${severity.toUpperCase()} Vulnerability ------`
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: summary
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `Version Range Affected: ${vulnerable_version_range}`
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: description
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          text: `Application repo: ${repoName}`,
+          type: 'text',
+          marks: [
+            {
+              type: 'link',
+              attrs: {
+                href: repoUrl
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          text: `Last updated at: ${lastUpdatedAt}`,
+          type: 'text'
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `Alerts (${alertItems.length}):`
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `Package: ${packageName}`
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: packageMarkerString
+        }
+      ]
+    }
+  )
+
+  for (const alertItem of alertItems) {
+    bodyContent.push({
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `- ${alertItem.number}: ${alertItem.summary} `
+        },
+        {
+          type: 'text',
+          text: alertItem.url,
+          marks: [
+            {
+              type: 'link',
+              attrs: {
+                href: alertItem.url
+              }
+            }
+          ]
+        }
+      ]
+    })
+  }
+
+  return bodyContent
+}
+
 export async function jiraApiSearch({
   jql
 }: SearchIssue): Promise<ApiRequestSearchResponse> {
@@ -325,6 +605,35 @@ export async function createJiraIssueFromAlerts({
       ? existingIssuesResponse
       : await jiraApiSearch({jql: legacyJql})
 
+  const alertItems =
+    alerts && alerts.length > 0
+      ? alerts
+      : [
+          {
+            url,
+            summary,
+            number,
+            severity,
+            description,
+            vulnerable_version_range,
+            lastUpdatedAt,
+            package: packageName
+          }
+        ]
+
+  const bodyContent = buildIssueBodyContent({
+    severity,
+    summary,
+    vulnerable_version_range,
+    description,
+    repoName,
+    repoUrl,
+    lastUpdatedAt,
+    packageName,
+    packageMarkerString,
+    alertItems
+  })
+
   if (
     legacyIssuesResponse &&
     legacyIssuesResponse.issues &&
@@ -345,142 +654,48 @@ export async function createJiraIssueFromAlerts({
       }
     }
 
+    if (existingIssue.key) {
+      try {
+        const existingAlertNumbers = await getJiraIssueAlertNumbers(
+          existingIssue.key
+        )
+        const incomingAlertNumbers = new Set(
+          alertItems.map(item => item.number.toString())
+        )
+
+        if (
+          hasAlertNumberDifference(existingAlertNumbers, incomingAlertNumbers)
+        ) {
+          const updatedBodyContent = buildIssueBodyContent({
+            severity,
+            summary,
+            vulnerable_version_range,
+            description,
+            repoName,
+            repoUrl,
+            lastUpdatedAt,
+            packageName,
+            packageMarkerString,
+            alertItems,
+            includeUpdatedNotice: true
+          })
+
+          await updateJiraIssueDescription(
+            existingIssue.key,
+            updatedBodyContent
+          )
+          core.debug(`Updated existing issue ${existingIssue.key}`)
+        }
+      } catch (e) {
+        core.debug(`Failed to update existing issue ${existingIssue.key}`)
+      }
+    }
+
     core.debug(`Has existing issue skipping`)
     core.debug(JSON.stringify(existingIssue))
     return {data: existingIssue}
   }
   core.debug(`Did not find exising, trying create`)
-  const alertItems =
-    alerts && alerts.length > 0
-      ? alerts
-      : [
-          {
-            url,
-            summary,
-            number,
-            severity,
-            description,
-            vulnerable_version_range,
-            lastUpdatedAt,
-            package: packageName
-          }
-        ]
-
-  const bodyContent: Record<string, unknown>[] = [
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: `------ ${severity.toUpperCase()} Vulnerability ------`
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: summary
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: `Version Range Affected: ${vulnerable_version_range}`
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: description
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          text: `Application repo: ${repoName}`,
-          type: 'text',
-          marks: [
-            {
-              type: 'link',
-              attrs: {
-                href: repoUrl
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          text: `Last updated at: ${lastUpdatedAt}`,
-          type: 'text'
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: `Alerts (${alertItems.length}):`
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: `Package: ${packageName}`
-        }
-      ]
-    },
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: packageMarkerString
-        }
-      ]
-    }
-  ]
-
-  for (const alertItem of alertItems) {
-    bodyContent.push({
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: `- ${alertItem.number}: ${alertItem.summary} `
-        },
-        {
-          type: 'text',
-          text: alertItem.url,
-          marks: [
-            {
-              type: 'link',
-              attrs: {
-                href: alertItem.url
-              }
-            }
-          ]
-        }
-      ]
-    })
-  }
 
   const body = {
     fields: {

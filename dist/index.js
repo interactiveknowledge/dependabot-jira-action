@@ -706,6 +706,208 @@ function addLabelsToJiraIssue(issueKey, labels) {
         throw new Error('Failed to update issue labels');
     });
 }
+function updateJiraIssueDescription(issueKey, bodyContent) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const body = {
+            fields: {
+                description: {
+                    content: bodyContent,
+                    type: 'doc',
+                    version: 1
+                }
+            }
+        };
+        const response = yield (0, node_fetch_1.default)(getJiraApiUrlV3(`/issue/${issueKey}`), {
+            method: 'PUT',
+            headers: getJiraAuthorizedHeader(),
+            body: JSON.stringify(body)
+        });
+        if (response.status === 204) {
+            return;
+        }
+        try {
+            const error = yield response.json();
+            core.error(error);
+        }
+        catch (e) {
+            core.error('error in updateJiraIssueDescription response.json()');
+        }
+        throw new Error('Failed to update issue description');
+    });
+}
+function collectTextFromDescriptionNodes(nodes) {
+    const output = [];
+    for (const node of nodes) {
+        if (node.text) {
+            output.push(node.text);
+        }
+        if (node.content && node.content.length > 0) {
+            output.push(...collectTextFromDescriptionNodes(node.content));
+        }
+    }
+    return output;
+}
+function extractAlertNumbersFromDescription(description) {
+    const nodes = (description === null || description === void 0 ? void 0 : description.content) || [];
+    const text = collectTextFromDescriptionNodes(nodes).join('\n');
+    const matches = text.matchAll(/-\s*(\d+):/g);
+    const alertNumbers = new Set();
+    for (const match of matches) {
+        alertNumbers.add(match[1]);
+    }
+    return alertNumbers;
+}
+function getJiraIssueAlertNumbers(issueKey) {
+    var _a;
+    return __awaiter(this, void 0, void 0, function* () {
+        const response = yield (0, node_fetch_1.default)(getJiraApiUrlV3(`/issue/${issueKey}?fields=description`), {
+            method: 'GET',
+            headers: getJiraAuthorizedHeader()
+        });
+        if (response.status !== 200) {
+            try {
+                const error = yield response.json();
+                core.error(error);
+            }
+            catch (e) {
+                core.error('error in getJiraIssueAlertNumbers response.json()');
+            }
+            throw new Error('Failed to load Jira issue description');
+        }
+        const issueResponse = (yield response.json());
+        return extractAlertNumbersFromDescription((_a = issueResponse.fields) === null || _a === void 0 ? void 0 : _a.description);
+    });
+}
+function hasAlertNumberDifference(existingAlertNumbers, incomingAlertNumbers) {
+    if (existingAlertNumbers.size !== incomingAlertNumbers.size) {
+        return true;
+    }
+    for (const number of incomingAlertNumbers) {
+        if (!existingAlertNumbers.has(number)) {
+            return true;
+        }
+    }
+    return false;
+}
+function buildIssueBodyContent({ severity, summary, vulnerable_version_range, description, repoName, repoUrl, lastUpdatedAt, packageName, packageMarkerString, alertItems, includeUpdatedNotice = false }) {
+    const bodyContent = [];
+    if (includeUpdatedNotice) {
+        bodyContent.push({
+            type: 'paragraph',
+            content: [
+                {
+                    type: 'text',
+                    text: 'NOTE: This issue was updated because the open Dependabot alert numbers changed.'
+                }
+            ]
+        });
+    }
+    bodyContent.push({
+        type: 'paragraph',
+        content: [
+            {
+                type: 'text',
+                text: `------ ${severity.toUpperCase()} Vulnerability ------`
+            }
+        ]
+    }, {
+        type: 'paragraph',
+        content: [
+            {
+                type: 'text',
+                text: summary
+            }
+        ]
+    }, {
+        type: 'paragraph',
+        content: [
+            {
+                type: 'text',
+                text: `Version Range Affected: ${vulnerable_version_range}`
+            }
+        ]
+    }, {
+        type: 'paragraph',
+        content: [
+            {
+                type: 'text',
+                text: description
+            }
+        ]
+    }, {
+        type: 'paragraph',
+        content: [
+            {
+                text: `Application repo: ${repoName}`,
+                type: 'text',
+                marks: [
+                    {
+                        type: 'link',
+                        attrs: {
+                            href: repoUrl
+                        }
+                    }
+                ]
+            }
+        ]
+    }, {
+        type: 'paragraph',
+        content: [
+            {
+                text: `Last updated at: ${lastUpdatedAt}`,
+                type: 'text'
+            }
+        ]
+    }, {
+        type: 'paragraph',
+        content: [
+            {
+                type: 'text',
+                text: `Alerts (${alertItems.length}):`
+            }
+        ]
+    }, {
+        type: 'paragraph',
+        content: [
+            {
+                type: 'text',
+                text: `Package: ${packageName}`
+            }
+        ]
+    }, {
+        type: 'paragraph',
+        content: [
+            {
+                type: 'text',
+                text: packageMarkerString
+            }
+        ]
+    });
+    for (const alertItem of alertItems) {
+        bodyContent.push({
+            type: 'paragraph',
+            content: [
+                {
+                    type: 'text',
+                    text: `- ${alertItem.number}: ${alertItem.summary} `
+                },
+                {
+                    type: 'text',
+                    text: alertItem.url,
+                    marks: [
+                        {
+                            type: 'link',
+                            attrs: {
+                                href: alertItem.url
+                            }
+                        }
+                    ]
+                }
+            ]
+        });
+    }
+    return bodyContent;
+}
 function jiraApiSearch({ jql }) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -773,6 +975,32 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
         const legacyIssuesResponse = existingIssuesResponse.issues.length > 0
             ? existingIssuesResponse
             : yield jiraApiSearch({ jql: legacyJql });
+        const alertItems = alerts && alerts.length > 0
+            ? alerts
+            : [
+                {
+                    url,
+                    summary,
+                    number,
+                    severity,
+                    description,
+                    vulnerable_version_range,
+                    lastUpdatedAt,
+                    package: packageName
+                }
+            ];
+        const bodyContent = buildIssueBodyContent({
+            severity,
+            summary,
+            vulnerable_version_range,
+            description,
+            repoName,
+            repoUrl,
+            lastUpdatedAt,
+            packageName,
+            packageMarkerString,
+            alertItems
+        });
         if (legacyIssuesResponse &&
             legacyIssuesResponse.issues &&
             legacyIssuesResponse.issues.length > 0) {
@@ -790,139 +1018,37 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
                     core.debug('Failed to backfill package/repo labels on existing issue');
                 }
             }
+            if (existingIssue.key) {
+                try {
+                    const existingAlertNumbers = yield getJiraIssueAlertNumbers(existingIssue.key);
+                    const incomingAlertNumbers = new Set(alertItems.map(item => item.number.toString()));
+                    if (hasAlertNumberDifference(existingAlertNumbers, incomingAlertNumbers)) {
+                        const updatedBodyContent = buildIssueBodyContent({
+                            severity,
+                            summary,
+                            vulnerable_version_range,
+                            description,
+                            repoName,
+                            repoUrl,
+                            lastUpdatedAt,
+                            packageName,
+                            packageMarkerString,
+                            alertItems,
+                            includeUpdatedNotice: true
+                        });
+                        yield updateJiraIssueDescription(existingIssue.key, updatedBodyContent);
+                        core.debug(`Updated existing issue ${existingIssue.key}`);
+                    }
+                }
+                catch (e) {
+                    core.debug(`Failed to update existing issue ${existingIssue.key}`);
+                }
+            }
             core.debug(`Has existing issue skipping`);
             core.debug(JSON.stringify(existingIssue));
             return { data: existingIssue };
         }
         core.debug(`Did not find exising, trying create`);
-        const alertItems = alerts && alerts.length > 0
-            ? alerts
-            : [
-                {
-                    url,
-                    summary,
-                    number,
-                    severity,
-                    description,
-                    vulnerable_version_range,
-                    lastUpdatedAt,
-                    package: packageName
-                }
-            ];
-        const bodyContent = [
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: `------ ${severity.toUpperCase()} Vulnerability ------`
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: summary
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: `Version Range Affected: ${vulnerable_version_range}`
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: description
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        text: `Application repo: ${repoName}`,
-                        type: 'text',
-                        marks: [
-                            {
-                                type: 'link',
-                                attrs: {
-                                    href: repoUrl
-                                }
-                            }
-                        ]
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        text: `Last updated at: ${lastUpdatedAt}`,
-                        type: 'text'
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: `Alerts (${alertItems.length}):`
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: `Package: ${packageName}`
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: packageMarkerString
-                    }
-                ]
-            }
-        ];
-        for (const alertItem of alertItems) {
-            bodyContent.push({
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: `- ${alertItem.number}: ${alertItem.summary} `
-                    },
-                    {
-                        type: 'text',
-                        text: alertItem.url,
-                        marks: [
-                            {
-                                type: 'link',
-                                attrs: {
-                                    href: alertItem.url
-                                }
-                            }
-                        ]
-                    }
-                ]
-            });
-        }
         const body = {
             fields: {
                 labels: [label, packageLabel, repoLabel],
