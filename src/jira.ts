@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import fetch, {HeaderInit, RequestInit, Response} from 'node-fetch'
-import {createIssueAlertNumberString} from './actions'
+import {createIssueAlertNumberString, createIssuePackageString} from './actions'
 import {DependabotAlert} from './github'
 
 interface ApiPostParams {
@@ -33,6 +33,18 @@ interface SearchDocument {
   pageId: string
 }
 
+function createJiraSafeLabel(value: string, prefix: string): string {
+  const normalizedValue = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  const safePrefix = prefix.replace(/[^a-z0-9_]+/g, '')
+  const maxLabelLength = 250
+  const base = `${safePrefix}_${normalizedValue}`
+  return base.substring(0, maxLabelLength)
+}
+
 export interface CreateIssue {
   label: string
   projectKey: string
@@ -60,6 +72,8 @@ export interface CreateIssueFromAlert {
   severity: string
   vulnerable_version_range: string
   number: string
+  package: string
+  alerts?: DependabotAlert[]
   issueSummary: string
 }
 
@@ -171,6 +185,38 @@ async function jiraApiPost(params: ApiPostParams): Promise<ApiRequestResponse> {
   }
 }
 
+async function addLabelsToJiraIssue(
+  issueKey: string,
+  labels: string[]
+): Promise<void> {
+  const body = {
+    update: {
+      labels: labels.map(label => ({
+        add: label
+      }))
+    }
+  }
+
+  const response = await fetch(getJiraApiUrlV3(`/issue/${issueKey}`), {
+    method: 'PUT',
+    headers: getJiraAuthorizedHeader(),
+    body: JSON.stringify(body)
+  })
+
+  if (response.status === 204) {
+    return
+  }
+
+  try {
+    const error = await response.json()
+    core.error(error)
+  } catch (e) {
+    core.error('error in addLabelsToJiraIssue response.json()')
+  }
+
+  throw new Error('Failed to update issue labels')
+}
+
 export async function jiraApiSearch({
   jql
 }: SearchIssue): Promise<ApiRequestSearchResponse> {
@@ -208,6 +254,8 @@ export async function createJiraIssueFromAlerts({
   url,
   lastUpdatedAt,
   number,
+  package: packageName,
+  alerts,
   severity,
   vulnerable_version_range,
   description,
@@ -215,22 +263,64 @@ export async function createJiraIssueFromAlerts({
   summary
 }: CreateIssueFromAlert): Promise<ApiRequestResponse> {
   const issueNumberString = createIssueAlertNumberString(number)
-  const jql = `description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
+  const packageMarkerString = createIssuePackageString(packageName)
+  const packageLabel = createJiraSafeLabel(packageName, 'dependabot_pkg')
+  const repoLabel = createJiraSafeLabel(repoName, 'dependabot_repo')
+
+  const jql = `labels="${label}" AND labels="${packageLabel}" AND labels="${repoLabel}" AND project="${projectKey}" AND issuetype="${issueType}"`
   const existingIssuesResponse = await jiraApiSearch({
     jql
   })
+  const foundByPrimaryLabels = existingIssuesResponse.issues.length > 0
+
+  const legacyJql = `(description~"${packageMarkerString}" OR description~"${issueNumberString}") AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
+  const legacyIssuesResponse =
+    existingIssuesResponse.issues.length > 0
+      ? existingIssuesResponse
+      : await jiraApiSearch({jql: legacyJql})
 
   if (
-    existingIssuesResponse &&
-    existingIssuesResponse.issues &&
-    existingIssuesResponse.issues.length > 0
+    legacyIssuesResponse &&
+    legacyIssuesResponse.issues &&
+    legacyIssuesResponse.issues.length > 0
   ) {
+    const existingIssue = legacyIssuesResponse.issues[0] as {key?: string}
+
+    if (!foundByPrimaryLabels && existingIssue.key) {
+      try {
+        await addLabelsToJiraIssue(existingIssue.key, [
+          label,
+          packageLabel,
+          repoLabel
+        ])
+        core.debug(`Backfilled package/repo labels on ${existingIssue.key}`)
+      } catch (e) {
+        core.debug('Failed to backfill package/repo labels on existing issue')
+      }
+    }
+
     core.debug(`Has existing issue skipping`)
-    core.debug(JSON.stringify(existingIssuesResponse.issues[0]))
-    return {data: existingIssuesResponse.issues[0]}
+    core.debug(JSON.stringify(existingIssue))
+    return {data: existingIssue}
   }
   core.debug(`Did not find exising, trying create`)
-  const bodyContent = [
+  const alertItems =
+    alerts && alerts.length > 0
+      ? alerts
+      : [
+          {
+            url,
+            summary,
+            number,
+            severity,
+            description,
+            vulnerable_version_range,
+            lastUpdatedAt,
+            package: packageName
+          }
+        ]
+
+  const bodyContent: Array<Record<string, unknown>> = [
     {
       type: 'paragraph',
       content: [
@@ -298,19 +388,16 @@ export async function createJiraIssueFromAlerts({
       content: [
         {
           type: 'text',
-          text: `Alert url: `
-        },
+          text: `Alerts (${alertItems.length}):`
+        }
+      ]
+    },
+    {
+      type: 'paragraph',
+      content: [
         {
           type: 'text',
-          text: `${url}`,
-          marks: [
-            {
-              type: 'link',
-              attrs: {
-                href: url
-              }
-            }
-          ]
+          text: `Package: ${packageName}`
         }
       ]
     },
@@ -322,12 +409,45 @@ export async function createJiraIssueFromAlerts({
           text: issueNumberString
         }
       ]
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: packageMarkerString
+        }
+      ]
     }
   ]
 
+  for (const alertItem of alertItems) {
+    bodyContent.push({
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: `- ${alertItem.number}: ${alertItem.summary} `
+        },
+        {
+          type: 'text',
+          text: alertItem.url,
+          marks: [
+            {
+              type: 'link',
+              attrs: {
+                href: alertItem.url
+              }
+            }
+          ]
+        }
+      ]
+    })
+  }
+
   const body = {
     fields: {
-      labels: [label],
+      labels: [label, packageLabel, repoLabel],
       project: {
         key: projectKey
       },

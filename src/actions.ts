@@ -48,6 +48,83 @@ export function createIssueAlertNumberString(pullNumber: string): string {
   return `ALERT_NUMBER_${pullNumber}_ALERT_NUMBER`
 }
 
+export function createIssuePackageString(packageName: string): string {
+  const normalizedPackage = packageName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return `ALERT_PACKAGE_${normalizedPackage}_ALERT_PACKAGE`
+}
+
+function getSeverityWeight(severity: string): number {
+  if (severity === 'critical') {
+    return 4
+  }
+  if (severity === 'high') {
+    return 3
+  }
+  if (severity === 'medium') {
+    return 2
+  }
+  if (severity === 'low') {
+    return 1
+  }
+  return 0
+}
+
+function groupDependabotAlertsByPackage(
+  dependabotAlerts: DependabotAlert[]
+): Array<DependabotAlert & {alertCount: number; alerts: DependabotAlert[]}> {
+  const alertsByPackage = new Map<string, DependabotAlert[]>()
+
+  for (const alert of dependabotAlerts) {
+    const existing = alertsByPackage.get(alert.package) || []
+    existing.push(alert)
+    alertsByPackage.set(alert.package, existing)
+  }
+
+  const groupedAlerts: Array<
+    DependabotAlert & {alertCount: number; alerts: DependabotAlert[]}
+  > = []
+
+  for (const packageAlerts of alertsByPackage.values()) {
+    const highestSeverityAlert = packageAlerts.reduce((current, item) => {
+      if (getSeverityWeight(item.severity) > getSeverityWeight(current.severity)) {
+        return item
+      }
+      return current
+    }, packageAlerts[0])
+
+    const vulnerableVersionRanges = [
+      ...new Set(packageAlerts.map(item => item.vulnerable_version_range))
+    ]
+    const alertUrls = [...new Set(packageAlerts.map(item => item.url))]
+
+    groupedAlerts.push({
+      ...highestSeverityAlert,
+      alertCount: packageAlerts.length,
+      alerts: packageAlerts,
+      summary:
+        packageAlerts.length > 1
+          ? `${packageAlerts.length} open alerts for package ${highestSeverityAlert.package}. Highest severity: ${highestSeverityAlert.severity.toUpperCase()}.`
+          : highestSeverityAlert.summary,
+      description:
+        packageAlerts.length > 1
+          ? `This package currently has ${packageAlerts.length} open Dependabot alerts.\n\nAffected versions:\n${vulnerableVersionRanges
+              .map(range => `- ${range}`)
+              .join('\n')}\n\nAlerts:\n${alertUrls
+              .map(item => `- ${item}`)
+              .join('\n')}`
+          : highestSeverityAlert.description,
+      vulnerable_version_range: vulnerableVersionRanges.join(' | '),
+      url: alertUrls[0]
+    })
+  }
+
+  return groupedAlerts
+}
+
 export function getTableContent(html: string, offset = 0): string {
   let start = html.indexOf('<tbody>') + 7
   let end = html.indexOf('</tbody>')
@@ -254,13 +331,19 @@ export async function syncJiraWithOpenDependabotAlerts(
       repo,
       owner
     })
+    const groupedDependabotAlerts = groupDependabotAlertsByPackage(
+      dependabotAlerts
+    )
     const jiraTickets = []
     let projectStatus = 'none'
 
-    for (const alert of dependabotAlerts) {
+    for (const alert of groupedDependabotAlerts) {
+      const alertCountLabel = `${alert.alertCount} alert${
+        alert.alertCount === 1 ? '' : 's'
+      }`
       const issueSummary = `Dependabot Security Update: ${alert.severity.toUpperCase()} Severity for ${
         alert.package
-      }`
+      } (${alertCountLabel})`
       const jiraTicketData = await createJiraIssueFromAlerts({
         ...alert,
         label,
