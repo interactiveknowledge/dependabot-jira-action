@@ -15,7 +15,6 @@ export interface SyncJiraOpen {
   projectKey: string
   issueType: string
   transitionDoneName?: string
-  closeIssueOnMerge?: string
 }
 
 export interface BuildTableRow {

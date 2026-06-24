@@ -27,7 +27,6 @@ jobs:
           jiraIssueType: Story
           githubRepo: project_abt_revwar
           githubOwner: interactiveknowledge
-          closeIssueOnMerge: "false"
           ikProjectDomain: "american-revolution-experience.battlefields.org"
           jiraProjectPage: "https://interactiveknowledge.atlassian.net/wiki/spaces/kb/pages/2619802145"
           ikDevSite: "https://battlefields-revwar-dev.herokuapp.com/"
