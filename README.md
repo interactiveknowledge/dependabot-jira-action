@@ -72,7 +72,7 @@ The scripts and documentation in this project are released under the [MIT Licens
 
 ## Development
 
-> Node 18.x
+> Node 24.x or higher
 
 Install the dependencies  
 ```bash
