@@ -269,10 +269,10 @@ export async function closeResolvedPackageJiraIssues({
   const jql = `labels="${label}" AND labels="${repoLabel}" AND project="${projectKey}" AND issuetype="${issueType}" AND statusCategory != Done`
   const existingIssuesResponse = await jiraApiSearch({jql})
 
-  for (const issue of existingIssuesResponse.issues as Array<{
+  for (const issue of existingIssuesResponse.issues as {
     key?: string
     fields?: {labels?: string[]}
-  }>) {
+  }[]) {
     const issueKey = issue.key
     const labelsForIssue = issue.fields?.labels || []
     const packageLabel = labelsForIssue.find(item =>
@@ -367,7 +367,7 @@ export async function createJiraIssueFromAlerts({
           }
         ]
 
-  const bodyContent: Array<Record<string, unknown>> = [
+  const bodyContent: Record<string, unknown>[] = [
     {
       type: 'paragraph',
       content: [

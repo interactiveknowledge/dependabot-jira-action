@@ -39,7 +39,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.syncJiraWithOpenDependabotAlerts = exports.buildModuleTable = exports.buildProjectInfoTable = exports.buildNewTableRow = exports.getTableContent = exports.createIssueAlertNumberString = exports.extractIssueNumber = void 0;
+exports.syncJiraWithOpenDependabotAlerts = exports.buildModuleTable = exports.buildProjectInfoTable = exports.buildNewTableRow = exports.getTableContent = exports.createIssuePackageString = exports.createIssueAlertNumberString = exports.extractIssueNumber = void 0;
 const github_1 = __nccwpck_require__(5928);
 const jira_1 = __nccwpck_require__(4438);
 const core = __importStar(__nccwpck_require__(2186));
@@ -59,6 +59,61 @@ function createIssueAlertNumberString(pullNumber) {
     return `ALERT_NUMBER_${pullNumber}_ALERT_NUMBER`;
 }
 exports.createIssueAlertNumberString = createIssueAlertNumberString;
+function createIssuePackageString(packageName) {
+    const normalizedPackage = packageName
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    return `ALERT_PACKAGE_${normalizedPackage}_ALERT_PACKAGE`;
+}
+exports.createIssuePackageString = createIssuePackageString;
+function getSeverityWeight(severity) {
+    if (severity === 'critical') {
+        return 4;
+    }
+    if (severity === 'high') {
+        return 3;
+    }
+    if (severity === 'medium') {
+        return 2;
+    }
+    if (severity === 'low') {
+        return 1;
+    }
+    return 0;
+}
+function groupDependabotAlertsByPackage(dependabotAlerts) {
+    const alertsByPackage = new Map();
+    for (const alert of dependabotAlerts) {
+        const existing = alertsByPackage.get(alert.package) || [];
+        existing.push(alert);
+        alertsByPackage.set(alert.package, existing);
+    }
+    const groupedAlerts = [];
+    for (const packageAlerts of alertsByPackage.values()) {
+        const highestSeverityAlert = packageAlerts.reduce((current, item) => {
+            if (getSeverityWeight(item.severity) > getSeverityWeight(current.severity)) {
+                return item;
+            }
+            return current;
+        }, packageAlerts[0]);
+        const vulnerableVersionRanges = [
+            ...new Set(packageAlerts.map(item => item.vulnerable_version_range))
+        ];
+        const alertUrls = [...new Set(packageAlerts.map(item => item.url))];
+        groupedAlerts.push(Object.assign(Object.assign({}, highestSeverityAlert), { alertCount: packageAlerts.length, alerts: packageAlerts, summary: packageAlerts.length > 1
+                ? `${packageAlerts.length} open alerts for package ${highestSeverityAlert.package}. Highest severity: ${highestSeverityAlert.severity.toUpperCase()}.`
+                : highestSeverityAlert.summary, description: packageAlerts.length > 1
+                ? `This package currently has ${packageAlerts.length} open Dependabot alerts.\n\nAffected versions:\n${vulnerableVersionRanges
+                    .map(range => `- ${range}`)
+                    .join('\n')}\n\nAlerts:\n${alertUrls
+                    .map(item => `- ${item}`)
+                    .join('\n')}`
+                : highestSeverityAlert.description, vulnerable_version_range: vulnerableVersionRanges.join(' | '), url: alertUrls[0] }));
+    }
+    return groupedAlerts;
+}
 function getTableContent(html, offset = 0) {
     let start = html.indexOf('<tbody>') + 7;
     let end = html.indexOf('</tbody>');
@@ -214,15 +269,17 @@ function syncJiraWithOpenDependabotAlerts(params) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.setOutput('Sync jira with open dependabot pulls starting', new Date().toTimeString());
-            const { repo, owner, label, projectKey, issueType } = params;
+            const { repo, owner, label, projectKey, issueType, transitionDoneName } = params;
             const dependabotAlerts = yield (0, github_1.getDependabotOpenAlerts)({
                 repo,
                 owner
             });
+            const groupedDependabotAlerts = groupDependabotAlertsByPackage(dependabotAlerts);
             const jiraTickets = [];
             let projectStatus = 'none';
-            for (const alert of dependabotAlerts) {
-                const issueSummary = `Dependabot Security Update: ${alert.severity.toUpperCase()} Severity for ${alert.package}`;
+            for (const alert of groupedDependabotAlerts) {
+                const alertCountLabel = `${alert.alertCount} alert${alert.alertCount === 1 ? '' : 's'}`;
+                const issueSummary = `Dependabot Security Update: ${alert.severity.toUpperCase()} Severity for ${alert.package} (${alertCountLabel})`;
                 const jiraTicketData = yield (0, jira_1.createJiraIssueFromAlerts)(Object.assign(Object.assign({}, alert), { label,
                     projectKey,
                     issueSummary,
@@ -230,6 +287,14 @@ function syncJiraWithOpenDependabotAlerts(params) {
                 projectStatus = 'security';
                 jiraTickets.push(Object.assign(Object.assign({}, alert), { jiraIssue: jiraTicketData.data }));
             }
+            yield (0, jira_1.closeResolvedPackageJiraIssues)({
+                label,
+                projectKey,
+                issueType,
+                repoName: repo,
+                openPackages: groupedDependabotAlerts.map(item => item.package),
+                transitionName: transitionDoneName
+            });
             // Update confluence.
             // Projects & Hosting Documents
             if (process.env.CONFLUENCE_PROJECTS_DOC_ID &&
@@ -508,10 +573,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getConfluenceDocument = exports.closeJiraIssue = exports.createJiraIssueFromAlerts = exports.jiraApiSearch = exports.getMarkupForStatusTags = exports.saveConfluenceDocument = exports.getConfluenceDocumentApiUrl = exports.getJiraSearchApiUrl = exports.getJiraApiUrlV3 = void 0;
+exports.getConfluenceDocument = exports.closeJiraIssue = exports.createJiraIssueFromAlerts = exports.closeResolvedPackageJiraIssues = exports.jiraApiSearch = exports.getMarkupForStatusTags = exports.saveConfluenceDocument = exports.getConfluenceDocumentApiUrl = exports.getJiraSearchApiUrl = exports.getJiraApiUrlV3 = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const node_fetch_1 = __importDefault(__nccwpck_require__(467));
 const actions_1 = __nccwpck_require__(3623);
+function createJiraSafeLabel(value, prefix) {
+    const normalizedValue = value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    const safePrefix = prefix.replace(/[^a-z0-9_]+/g, '');
+    const maxLabelLength = 250;
+    const base = `${safePrefix}_${normalizedValue}`;
+    return base.substring(0, maxLabelLength);
+}
 function getJiraAuthorizedHeader() {
     const email = process.env.JIRA_USER_EMAIL;
     const token = process.env.JIRA_API_TOKEN;
@@ -620,10 +696,37 @@ function jiraApiPost(params) {
         }
     });
 }
+function addLabelsToJiraIssue(issueKey, labels) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const body = {
+            update: {
+                labels: labels.map(label => ({
+                    add: label
+                }))
+            }
+        };
+        const response = yield (0, node_fetch_1.default)(getJiraApiUrlV3(`/issue/${issueKey}`), {
+            method: 'PUT',
+            headers: getJiraAuthorizedHeader(),
+            body: JSON.stringify(body)
+        });
+        if (response.status === 204) {
+            return;
+        }
+        try {
+            const error = yield response.json();
+            core.error(error);
+        }
+        catch (e) {
+            core.error('error in addLabelsToJiraIssue response.json()');
+        }
+        throw new Error('Failed to update issue labels');
+    });
+}
 function jiraApiSearch({ jql }) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const getUrl = `${getJiraSearchApiUrl()}?jql=${encodeURIComponent(jql)}&fields=key`;
+            const getUrl = `${getJiraSearchApiUrl()}?jql=${encodeURIComponent(jql)}&fields=key,labels`;
             core.info(`jql ${jql}`);
             const requestParams = {
                 method: 'GET',
@@ -648,21 +751,82 @@ function jiraApiSearch({ jql }) {
     });
 }
 exports.jiraApiSearch = jiraApiSearch;
-function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, severity, vulnerable_version_range, description, issueSummary, summary }) {
+function closeResolvedPackageJiraIssues({ label, projectKey, issueType, repoName, openPackages, transitionName = 'done' }) {
+    var _a;
+    return __awaiter(this, void 0, void 0, function* () {
+        const repoLabel = createJiraSafeLabel(repoName, 'dependabot_repo');
+        const openPackageLabels = new Set(openPackages.map(item => createJiraSafeLabel(item, 'dependabot_pkg')));
+        const jql = `labels="${label}" AND labels="${repoLabel}" AND project="${projectKey}" AND issuetype="${issueType}" AND statusCategory != Done`;
+        const existingIssuesResponse = yield jiraApiSearch({ jql });
+        for (const issue of existingIssuesResponse.issues) {
+            const issueKey = issue.key;
+            const labelsForIssue = ((_a = issue.fields) === null || _a === void 0 ? void 0 : _a.labels) || [];
+            const packageLabel = labelsForIssue.find(item => item.startsWith('dependabot_pkg_'));
+            if (!issueKey || !packageLabel || openPackageLabels.has(packageLabel)) {
+                continue;
+            }
+            try {
+                yield closeJiraIssue(issueKey, transitionName);
+                core.debug(`Closed Jira issue ${issueKey} for resolved package`);
+            }
+            catch (e) {
+                core.debug(`Failed to close Jira issue ${issueKey} for resolved package`);
+            }
+        }
+    });
+}
+exports.closeResolvedPackageJiraIssues = closeResolvedPackageJiraIssues;
+function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', repoName, repoUrl, url, lastUpdatedAt, number, package: packageName, alerts, severity, vulnerable_version_range, description, issueSummary, summary }) {
     return __awaiter(this, void 0, void 0, function* () {
         const issueNumberString = (0, actions_1.createIssueAlertNumberString)(number);
-        const jql = `description~"${issueNumberString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
+        const packageMarkerString = (0, actions_1.createIssuePackageString)(packageName);
+        const packageLabel = createJiraSafeLabel(packageName, 'dependabot_pkg');
+        const repoLabel = createJiraSafeLabel(repoName, 'dependabot_repo');
+        const jql = `labels="${label}" AND labels="${packageLabel}" AND labels="${repoLabel}" AND project="${projectKey}" AND issuetype="${issueType}"`;
         const existingIssuesResponse = yield jiraApiSearch({
             jql
         });
-        if (existingIssuesResponse &&
-            existingIssuesResponse.issues &&
-            existingIssuesResponse.issues.length > 0) {
+        const foundByPrimaryLabels = existingIssuesResponse.issues.length > 0;
+        const legacyJql = `(description~"${packageMarkerString}" OR description~"${issueNumberString}") AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
+        const legacyIssuesResponse = existingIssuesResponse.issues.length > 0
+            ? existingIssuesResponse
+            : yield jiraApiSearch({ jql: legacyJql });
+        if (legacyIssuesResponse &&
+            legacyIssuesResponse.issues &&
+            legacyIssuesResponse.issues.length > 0) {
+            const existingIssue = legacyIssuesResponse.issues[0];
+            if (!foundByPrimaryLabels && existingIssue.key) {
+                try {
+                    yield addLabelsToJiraIssue(existingIssue.key, [
+                        label,
+                        packageLabel,
+                        repoLabel
+                    ]);
+                    core.debug(`Backfilled package/repo labels on ${existingIssue.key}`);
+                }
+                catch (e) {
+                    core.debug('Failed to backfill package/repo labels on existing issue');
+                }
+            }
             core.debug(`Has existing issue skipping`);
-            core.debug(JSON.stringify(existingIssuesResponse.issues[0]));
-            return { data: existingIssuesResponse.issues[0] };
+            core.debug(JSON.stringify(existingIssue));
+            return { data: existingIssue };
         }
         core.debug(`Did not find exising, trying create`);
+        const alertItems = alerts && alerts.length > 0
+            ? alerts
+            : [
+                {
+                    url,
+                    summary,
+                    number,
+                    severity,
+                    description,
+                    vulnerable_version_range,
+                    lastUpdatedAt,
+                    package: packageName
+                }
+            ];
         const bodyContent = [
             {
                 type: 'paragraph',
@@ -731,19 +895,16 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
                 content: [
                     {
                         type: 'text',
-                        text: `Alert url: `
-                    },
+                        text: `Alerts (${alertItems.length}):`
+                    }
+                ]
+            },
+            {
+                type: 'paragraph',
+                content: [
                     {
                         type: 'text',
-                        text: `${url}`,
-                        marks: [
-                            {
-                                type: 'link',
-                                attrs: {
-                                    href: url
-                                }
-                            }
-                        ]
+                        text: `Package: ${packageName}`
                     }
                 ]
             },
@@ -755,11 +916,43 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
                         text: issueNumberString
                     }
                 ]
+            },
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: packageMarkerString
+                    }
+                ]
             }
         ];
+        for (const alertItem of alertItems) {
+            bodyContent.push({
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: `- ${alertItem.number}: ${alertItem.summary} `
+                    },
+                    {
+                        type: 'text',
+                        text: alertItem.url,
+                        marks: [
+                            {
+                                type: 'link',
+                                attrs: {
+                                    href: alertItem.url
+                                }
+                            }
+                        ]
+                    }
+                ]
+            });
+        }
         const body = {
             fields: {
-                labels: [label],
+                labels: [label, packageLabel, repoLabel],
                 project: {
                     key: projectKey
                 },
@@ -800,7 +993,7 @@ function closeJiraIssue(issueId, transitionName = 'done') {
                                     {
                                         content: [
                                             {
-                                                text: 'Closed by dependabot',
+                                                text: 'Closed by ik_devs dependabot action',
                                                 type: 'text'
                                             }
                                         ],
@@ -983,7 +1176,7 @@ run();
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.IK_DEVS_VERSION = void 0;
-exports.IK_DEVS_VERSION = "2.0.2";
+exports.IK_DEVS_VERSION = "2.0.3";
 
 
 /***/ }),

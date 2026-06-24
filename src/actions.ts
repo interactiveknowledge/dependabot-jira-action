@@ -76,7 +76,7 @@ function getSeverityWeight(severity: string): number {
 
 function groupDependabotAlertsByPackage(
   dependabotAlerts: DependabotAlert[]
-): Array<DependabotAlert & {alertCount: number; alerts: DependabotAlert[]}> {
+): (DependabotAlert & {alertCount: number; alerts: DependabotAlert[]})[] {
   const alertsByPackage = new Map<string, DependabotAlert[]>()
 
   for (const alert of dependabotAlerts) {
@@ -85,13 +85,16 @@ function groupDependabotAlertsByPackage(
     alertsByPackage.set(alert.package, existing)
   }
 
-  const groupedAlerts: Array<
-    DependabotAlert & {alertCount: number; alerts: DependabotAlert[]}
-  > = []
+  const groupedAlerts: (DependabotAlert & {
+    alertCount: number
+    alerts: DependabotAlert[]
+  })[] = []
 
   for (const packageAlerts of alertsByPackage.values()) {
     const highestSeverityAlert = packageAlerts.reduce((current, item) => {
-      if (getSeverityWeight(item.severity) > getSeverityWeight(current.severity)) {
+      if (
+        getSeverityWeight(item.severity) > getSeverityWeight(current.severity)
+      ) {
         return item
       }
       return current
@@ -108,11 +111,15 @@ function groupDependabotAlertsByPackage(
       alerts: packageAlerts,
       summary:
         packageAlerts.length > 1
-          ? `${packageAlerts.length} open alerts for package ${highestSeverityAlert.package}. Highest severity: ${highestSeverityAlert.severity.toUpperCase()}.`
+          ? `${packageAlerts.length} open alerts for package ${
+              highestSeverityAlert.package
+            }. Highest severity: ${highestSeverityAlert.severity.toUpperCase()}.`
           : highestSeverityAlert.summary,
       description:
         packageAlerts.length > 1
-          ? `This package currently has ${packageAlerts.length} open Dependabot alerts.\n\nAffected versions:\n${vulnerableVersionRanges
+          ? `This package currently has ${
+              packageAlerts.length
+            } open Dependabot alerts.\n\nAffected versions:\n${vulnerableVersionRanges
               .map(range => `- ${range}`)
               .join('\n')}\n\nAlerts:\n${alertUrls
               .map(item => `- ${item}`)
@@ -333,9 +340,8 @@ export async function syncJiraWithOpenDependabotAlerts(
       repo,
       owner
     })
-    const groupedDependabotAlerts = groupDependabotAlertsByPackage(
-      dependabotAlerts
-    )
+    const groupedDependabotAlerts =
+      groupDependabotAlertsByPackage(dependabotAlerts)
     const jiraTickets = []
     let projectStatus = 'none'
 
