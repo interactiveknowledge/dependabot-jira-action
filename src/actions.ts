@@ -120,8 +120,6 @@ function groupDependabotAlertsByPackage(
               packageAlerts.length
             } open Dependabot alerts.\n\nAffected versions:\n${vulnerableVersionRanges
               .map(range => `- ${range}`)
-              .join('\n')}\n\nAlerts:\n${alertUrls
-              .map(item => `- ${item}`)
               .join('\n')}`
           : highestSeverityAlert.description,
       vulnerable_version_range: vulnerableVersionRanges.join(' | '),
