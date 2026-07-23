@@ -10,11 +10,14 @@ See [action.yml](action.yml)
 ```yaml
 name: Update JIRA with dependabot issues
 on:
-  # Run on schedule
+  # Run on schedule, once a month
   schedule: 
-    - cron: '0 */12 * * *'
+    - cron: '32 0 1 * *' # change the minutes or hour to unique. 
+  # Also allow manual triggering of the workflow for testing purposes
+  workflow_dispatch:
 jobs:
   jira:
+    if: ${{ github.event_name != 'schedule' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
@@ -46,7 +49,7 @@ jobs:
       name: Check action failure
       needs: jira
       runs-on: ubuntu-latest
-      if: ${{ failure() }}
+      if: ${{ failure() && (github.event_name != 'schedule' || github.ref == 'refs/heads/main') }}
       steps:
       - uses: actions/checkout@v4
       - name: Slack Notification
