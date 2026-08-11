@@ -19,12 +19,3 @@ test('test create jira search url', async () => {
     `https://${subdomain}.atlassian.net/rest/api/3/search/jql`
   )
 })
-
-// test('extra issue number from description', async () => {
-//   const issueNumber = '42'
-//   const issueNumberString = createIssueAlertNumberString(issueNumber.toString())
-//   const issueNumberExtracted = extractIssueNumber(`
-//     ${issueNumberString}
-//   `)
-//   expect(issueNumberExtracted).toEqual(issueNumber)
-// })

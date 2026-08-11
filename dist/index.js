@@ -971,7 +971,7 @@ function createJiraIssueFromAlerts({ label, projectKey, issueType = 'Story', rep
             jql
         });
         const foundByPrimaryLabels = existingIssuesResponse.issues.length > 0;
-        const legacyJql = `(description~"${packageMarkerString}" OR AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
+        const legacyJql = `(description~"${packageMarkerString}" AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`;
         const legacyIssuesResponse = existingIssuesResponse.issues.length > 0
             ? existingIssuesResponse
             : yield jiraApiSearch({ jql: legacyJql });
