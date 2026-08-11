@@ -593,13 +593,13 @@ export async function createJiraIssueFromAlerts({
   const packageLabel = createJiraSafeLabel(packageName, 'dependabot_pkg')
   const repoLabel = createJiraSafeLabel(repoName, 'dependabot_repo')
 
-  const jql = `labels="${label}" AND labels="${packageLabel}" AND labels="${repoLabel}" AND project="${projectKey}" AND issuetype="${issueType}"`
+  const jql = `labels="${label}" AND labels="${packageLabel}" AND labels="${repoLabel}" AND project="${projectKey}" AND issuetype="${issueType}" AND statusCategory != Done`
   const existingIssuesResponse = await jiraApiSearch({
     jql
   })
   const foundByPrimaryLabels = existingIssuesResponse.issues.length > 0
 
-  const legacyJql = `(description~"${packageMarkerString}" OR AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}"`
+  const legacyJql = `(description~"${packageMarkerString}" OR AND description~"${repoName}" AND labels="${label}" AND project="${projectKey}" AND issuetype="${issueType}" AND statusCategory != Done`
   const legacyIssuesResponse =
     existingIssuesResponse.issues.length > 0
       ? existingIssuesResponse
